@@ -63,6 +63,8 @@
   <button id="bRooms" class="btn">☰ Místnosti</button>
   <div id="timebox" class="panel">☀ <input id="time" type="range" min="5" max="21.5" step="0.25" value="10"><span id="tval">10:00</span></div>
   <button id="bLamp" class="btn">💡 Světla</button>
+  <button id="bGH" class="btn on">🌱 Skleník</button>
+  <button id="bPool" class="btn on">🏊 Bazén</button>
   <button id="bQ" class="btn">⚙ Kvalita</button>
   <button id="bShot" class="btn" title="Snímek obrazovky (P)">📷 Snímek</button>
   <button id="bVR" class="btn hide">🥽 VR</button>
@@ -79,7 +81,7 @@
 <div id="menu" class="panel hide"><button id="menuClose" class="btn" style="width:auto;padding:4px 10px">✕</button><div id="menuList"></div></div>
 <canvas id="mini" width="118" height="162"></canvas>
 <div id="hint" class="panel">Klikněte do obrazu pro ovládání myší · Esc uvolní kurzor</div>
-<div id="help" class="panel desk-only"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>M</b> místnosti · <b>L</b> světla · <b>P</b> snímek · <b>H</b> skrýt nápovědu<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
+<div id="help" class="panel desk-only"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>M</b> místnosti · <b>L</b> světla · <b>P</b> snímek · <b>G</b> skleník · <b>B</b> bazén · <b>H</b> skrýt nápovědu<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
 <div id="joy"><div id="knob"></div></div>
 <div id="intro">
   <div class="card panel">
@@ -231,6 +233,8 @@ const VIEWS = [
   ['Venku – zahrada (JV)', [21.0, 13.0, 290], 0],
   ['Venku – vjezd a vstup (JZ)', [-4.5, 21.0, 20], 0],
   ['Venku – terasa', [13.5, 6.5, 330], 0],
+  ['Venku – bazén', [17.4, 13.8, 330], 0],
+  ['Venku – skleník', [19.6, 0.4, 85], 0],
   ['Ulice – pohled na dům', [8.0, 27.0, 352], 0],
   ['Ulice – roh (JV)', [31.0, 27.0, 310], 0],
 ];
@@ -252,8 +256,17 @@ function outsideH(x, z) {
   if (x < -9.6) return -1.10 + Math.max(0, Math.min(1, (z - 14) / 8)) * 0.43;
   return 0;
 }
+// BAZÉN (doplněno na přání, není ve výkresech): vana 3,0 × 7,0 m, okolí dřevěná terasa
+const POOL = { x0: 12.35, x1: 15.35, z0: 5.25, z1: 11.75, depth: 1.4 };   // vana 3,0 × 6,5 m (červeně vyznačené místo)
+const POOL_DECK = { x0: 13.7, x1: 18.0, z0: 4.35, z1: 12.6 };            // dřevěná terasa kolem (část je dlažba u domu)
+const inPoolDeck = (x, z) => x > POOL_DECK.x0 - 0.6 && x < POOL_DECK.x1 + 0.6 && z > POOL_DECK.z0 - 0.3 && z < POOL_DECK.z1 + 0.6;
+// SKLENÍK (doplněno na přání) v SV rohu pozemku: 4,0 × 2,5 m, dveře ve štítu na západ
+const GH = { x0: 21.2, x1: 25.2, z0: -1.55, z1: 0.95 };
+const inGH = (x, z, m = 0) => x > GH.x0 - m && x < GH.x1 + m && z > GH.z0 - m && z < GH.z1 + m;
 function terrainH(x, z) {
   if (!inPoly(x, z, PLOT)) return outsideH(x, z);
+  if (inPoolDeck(x, z)) return 0.0;
+  if (inGH(x, z, 0.5)) return 0.0;
   if (inPoly(x, z, PAVE_HOUSE)) return -0.03;
   if (inPoly(x, z, PAVE_WEST)) return z < 19 ? -0.03 : -0.03 - Math.min(1, (z - 19) / 3.6) * 0.64;
   let sw = 0, sh = 0;
@@ -329,6 +342,13 @@ const MATS = {
   granite: { color: '#ffffff', tex: 'granite', ts: 1.0, rough: 0.8, spec: 0.08 },
   boulder: { color: '#8f8b84', tex: 'concrete', ts: 1.2, rough: 1, spec: 0.03 },
   gutter: { color: '#141517', rough: 0.4, spec: 0.35 },
+  poolTile: { color: '#cfe0e4', tex: 'tile', ts: 0.6, rough: 0.3, spec: 0.3 },
+  water: { color: '#2f9dbf', op: 0.55, rough: 0.05, spec: 1.0, cast: false },
+  polycarb: { color: '#e8f1f3', op: 0.22, rough: 0.2, spec: 0.8, cast: false },
+  alu: { color: '#9ea3a8', rough: 0.35, spec: 0.5 },
+  ghGlass: { color: '#eaf3f2', op: 0.18, rough: 0.1, spec: 0.9, cast: false },
+  soil: { color: '#4a3a2c', rough: 1, spec: 0 },
+  gravel: { color: '#b8b3a8', tex: 'concrete', ts: 0.8, rough: 1, spec: 0.02 },
   screed: { color: '#ffffff', tex: 'screed', ts: 3.0, rough: 0.6, spec: 0.12 },
   concrete: { color: '#ffffff', tex: 'concrete', ts: 2.5, rough: 0.9, spec: 0.03 },
   oakPanel: { color: '#ffffff', tex: 'oakF', ts: 1.2, rough: 0.5, spec: 0.15 },
@@ -1061,7 +1081,7 @@ function buildExterior() {
   box('frame', -3.975, 3.05, 6.07, 0, 3.38, 6.128, { c: false });
   // dřevěný obklad části západní fasády pod přístřeškem
   // stromy kolem
-  const trees = [[-14, -9, 6], [22, -8, 7], [-16, 24, 6.5], [6, 36, 5], [40, 30, 6], [-20, 6, 7], [12, -14, 6], [19.5, 4.5, 4.5], [5, 20.6, 4]];
+  const trees = [[-14, -9, 6], [22, -8, 7], [-16, 24, 6.5], [6, 36, 5], [40, 30, 6], [-20, 6, 7], [12, -14, 6], [5, 20.6, 4]];
   for (const [x, z, h] of trees) {
     const g0 = terrainH(x, z);
     cyl('trunk', x, z, 0.16, g0 - 0.05, g0 + h * 0.45, 8);
@@ -1095,7 +1115,7 @@ function buildTerrain() {
   const road = (x, z) => (z > 23.7 && z < 30.3 && x < 33.5) || (x > 28.6 && x < 34.6 && z < 30.3) ;
   const entry = (x, z) => x > -8.6 && x < -3.47 && z >= 22.4 && z <= 23.7;
   const house = (x, z) => (x > 0.05 && x < 10.15 && z > 0.05 && z < 11.6) || (x > 0.05 && x < 8.6 && z > 0.05 && z < 15.98) || (x > -7.55 && x < -4.0 && z > 6.15 && z < 13.7);
-  const matAt = (x, z) => road(x, z) ? 'asphalt' : (inPoly(x, z, PLOT) && (inPoly(x, z, PAVE_HOUSE) || inPoly(x, z, PAVE_WEST))) || entry(x, z) ? 'granite' : 'grass';
+  const matAt = (x, z) => inGH(x, z, 0.45) ? 'gravel' : road(x, z) ? 'asphalt' : (inPoly(x, z, PLOT) && (inPoly(x, z, PAVE_HOUSE) || inPoly(x, z, PAVE_WEST))) || entry(x, z) ? 'granite' : 'grass';
   const grid = (x0, x1, z0, z1, st, hole) => {
     const nx = Math.round((x1 - x0) / st), nz = Math.round((z1 - z0) / st), H = [];
     for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) H.push(terrainH(x0 + i * st, z0 + j * st));
@@ -1104,17 +1124,18 @@ function buildTerrain() {
       const xa = x0 + i * st, za = z0 + j * st, xb = xa + st, zb = za + st, cx = xa + st / 2, cz = za + st / 2;
       if (hole && hole(cx, cz)) continue;
       if (house(cx, cz)) continue;
+      if (cx > POOL.x0 && cx < POOL.x1 && cz > POOL.z0 && cz < POOL.z1) continue;
       const m = matAt(cx, cz), lift = m === 'grass' ? 0 : 0.012;
       const a = [xa, hv(i, j) + lift, za], b = [xb, hv(i + 1, j) + lift, za], c = [xb, hv(i + 1, j + 1) + lift, zb], d = [xa, hv(i, j + 1) + lift, zb];
       const n1 = norm(cross(sub(d, a), sub(b, a))), n2 = norm(cross(sub(b, c), sub(d, c)));
       tri(m, a, d, b, n1); tri(m, c, b, d, n2);
     }
   };
-  grid(-14, 38, -8, 34, 0.25, null);
+  grid(-14, 38, -8, 34, 0.2, null);
   grid(-60, 70, -50, 70, 2, (x, z) => x > -14 && x < 38 && z > -8 && z < 34);
   // obruby kolem dlažby (hrany do trávy) – jen vizuálně, přes terén
   // velké balvany ve svahu
-  const R = rng(55), rock = (x, z) => { const r = 0.22 + R() * 0.26; sphere('boulder', x, terrainH(x, z) + r * 0.35, z, r * (1 + R() * 0.4), r * 0.8, r * (1 + R() * 0.3), 7); };
+  const R = rng(55), rock = (x, z) => { if (inGH(x, z, 0.8)) return; const r = 0.22 + R() * 0.26; sphere('boulder', x, terrainH(x, z) + r * 0.35, z, r * (1 + R() * 0.4), r * 0.8, r * (1 + R() * 0.3), 7); };
   const along = (a, b, off) => { const L = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let t = 0; t < L; t += 0.55 + R() * 0.2) { const f = t / L; rock(a[0] + (b[0] - a[0]) * f + off[0] * (0.3 + R() * 0.8), a[1] + (b[1] - a[1]) * f + off[1] * (0.3 + R() * 0.8)); } };
   along([27.0, -1.6], [25.9, 18.6], [-1, 0]);
   along([25.6, 19.1], [21.3, 22.2], [-0.6, -0.6]);
@@ -1202,6 +1223,109 @@ function buildFacadeDetails() {
   // dřevěný lem střechy přístřešku a skladu
   box('cladding', -7.65, 3.0, 13.71, 0, 3.38, 13.76, { c: false });
   box('cladding', -7.65, 3.0, 6.07, 0, 3.38, 6.12, { c: false });
+}
+
+// ---------- BAZÉN + ZASTŘEŠENÍ + LEHÁTKA (samostatná skupina – lze skrýt) ----------
+function buildPool() {
+  const { x0, x1, z0, z1, depth } = POOL, d = -depth, c = 0.3;
+  // dřevěná terasa kolem (mimo dlažbu u domu)
+  const D = POOL_DECK, dy = 0.035;
+  box('deck', D.x0, -0.03, D.z0, D.x1, dy, z0 - c);
+  box('deck', D.x0, -0.03, z1 + c, D.x1, dy, D.z1);
+  box('deck', x1 + c, -0.03, z0 - c, D.x1, dy, z1 + c);
+  box('deck', D.x0, -0.03, z0 - c, x0 - c < D.x0 ? D.x0 : x0 - c, dy, z1 + c);
+  // vana
+  box('poolTile', x0, d - 0.2, z0, x1, d, z1, { c: false });
+  box('poolTile', x0 - 0.2, d - 0.2, z0 - 0.2, x0, 0, z1 + 0.2, { c: false, skip: 'w' });
+  box('poolTile', x1, d - 0.2, z0 - 0.2, x1 + 0.2, 0, z1 + 0.2, { c: false, skip: 'e' });
+  box('poolTile', x0, d - 0.2, z0 - 0.2, x1, 0, z0, { c: false, skip: 'n' });
+  box('poolTile', x0, d - 0.2, z1, x1, 0, z1 + 0.2, { c: false, skip: 's' });
+  for (const [a, b, e, f] of [[x0 - c, z0 - c, x1 + c, z0], [x0 - c, z1, x1 + c, z1 + c], [x0 - c, z0, x0, z1], [x1, z0, x1 + c, z1]]) box('capstone', a, -0.02, b, e, dy + 0.005, f, { c: false });
+  for (let i = 0; i < 4; i++) box('poolTile', x0 + 0.5, d, z1 - 0.35 * (4 - i), x1 - 0.5, -0.3 * (i + 1), z1, { c: false });   // schody (jižní konec)
+  box('water', x0, -0.12, z0, x1, -0.11, z1, { c: false });
+  COLL.push([x0 - 0.05, -2, z0 - 0.05, x1 + 0.05, 0.95, z1 + 0.05]);
+  // nízké teleskopické zastřešení – oblouky přes šířku (osa x), segmenty po délce (osa z)
+  const ex0 = x0 - 0.42, ex1 = x1 + 0.42, ez0 = z0 - 0.42, ez1 = z1 + 0.42, H = 1.05, W = (ex1 - ex0) / 2, xc = (ex0 + ex1) / 2;
+  const N = 14, arc = (i, sh) => { const t = Math.PI * i / N; return [xc - Math.cos(t) * W * sh, dy + Math.sin(t) * H * sh]; };
+  const segs = 3, L = (ez1 - ez0) / segs;
+  for (let k = 0; k < segs; k++) {
+    const s0 = ez0 + k * L, s1 = s0 + L + (k < segs - 1 ? 0.02 : 0), sh = 1 + (segs - 1 - k) * 0.025;
+    for (let i = 0; i < N; i++) {
+      const A = arc(i, sh), B = arc(i + 1, sh);
+      quad('polycarb', [A[0], A[1], s0], [A[0], A[1], s1], [B[0], B[1], s1], [B[0], B[1], s0]);
+      for (const zr of [s0, s1 - 0.05]) prism('alu', 'x', [[A[0], A[1] - 0.04], [B[0], B[1] - 0.04], [B[0], B[1] + 0.01], [A[0], A[1] + 0.01]], zr, zr + 0.05, false);
+    }
+    box('alu', xc - W * sh, dy, s0, xc - W * sh + 0.05, dy + 0.06, s1, { c: false });
+    box('alu', xc + W * sh - 0.05, dy, s0, xc + W * sh, dy + 0.06, s1, { c: false });
+  }
+  for (const ze of [ez0 - 0.01, ez1 + 0.01]) { const sh = ze < z0 ? 1 + (segs - 1) * 0.025 : 1; for (let i = 0; i < N; i++) { const A = arc(i, sh), B = arc(i + 1, sh); tri('polycarb', [xc, dy, ze], [A[0], A[1], ze], [B[0], B[1], ze], [0, 0, ze < z0 ? -1 : 1]); } }
+  COLL.push([ex0 - 0.12, 0, ez0 - 0.05, ex1 + 0.12, H + 0.1, ez1 + 0.05]);
+  // lehátka (3 ks) na terase východně od bazénu, hlavou k plotu
+  const lounger = (cz, xa) => {
+    const w = 0.66, L = 1.95, za = cz - w / 2, zb = cz + w / 2, xb = xa + L, y0 = dy;
+    for (const zl of [za, zb - 0.04]) { box('blackMatte', xa, y0 + 0.24, zl, xb, y0 + 0.30, zl + 0.04, { c: false }); for (const xl of [xa + 0.05, xb - 0.09]) box('blackMatte', xl, y0, zl, xl + 0.04, y0 + 0.24, zl + 0.04, { c: false }); }
+    box('blackMatte', xa, y0 + 0.26, za, xa + 0.04, y0 + 0.30, zb, { c: false }); box('blackMatte', xb - 0.04, y0 + 0.26, za, xb, y0 + 0.30, zb, { c: false });
+    box('cream', xa + 0.02, y0 + 0.30, za + 0.03, xb - 0.62, y0 + 0.38, zb - 0.03, { c: false });
+    prism('cream', 'x', [[xb - 0.62, y0 + 0.30], [xb - 0.02, y0 + 0.30], [xb - 0.12, y0 + 0.98], [xb - 0.62, y0 + 0.38]], za + 0.03, zb - 0.03, false);
+    box('cream', xb - 0.32, y0 + 0.84, za + 0.1, xb - 0.12, y0 + 0.96, zb - 0.1, { c: false });
+    COLL.push([xa, 0, za, xb, 0.5, zb]);
+  };
+  for (const cz of [6.6, 7.9, 9.2]) lounger(cz, 15.85);
+  cyl('blackMatte', 16.8, 10.35, 0.22, dy + 0.42, dy + 0.45, 20); cyl('blackMatte', 16.8, 10.35, 0.02, dy, dy + 0.42, 8, false);
+  cyl('alu', 17.4, 11.3, 0.025, dy, 2.4, 8, false); cyl('blackMatte', 17.4, 11.3, 0.25, dy, dy + 0.06, 16);
+  for (let i = 0; i < 8; i++) { const a0 = i / 8 * Math.PI * 2, a1 = (i + 1) / 8 * Math.PI * 2; tri('linen', [17.4, 2.65, 11.3], [17.4 + Math.cos(a0) * 1.35, 2.3, 11.3 + Math.sin(a0) * 1.35], [17.4 + Math.cos(a1) * 1.35, 2.3, 11.3 + Math.sin(a1) * 1.35], [0, 1, 0]); }
+}
+// výplň místa bazénu, když je bazén skrytý
+function buildPoolOff() { const { x0, x1, z0, z1 } = POOL; box('grass', x0 - 0.05, -0.05, z0 - 0.05, x1 + 0.05, 0.0, z1 + 0.05, { c: false }); }
+
+// ---------- SKLENÍK (samostatná skupina – lze skrýt) ----------
+function buildGreenhouse() {
+  const { x0, x1, z0, z1 } = GH, eave = 1.85, ridge = 2.65, zc = (z0 + z1) / 2, f = 0.045;
+  box('alu', x0, 0, z0, x1, 0.18, z1, { c: false, skip: 't' });                 // podezdívka/rám
+  // stěny – sklo + svislé profily
+  const nB = 6, dx = (x1 - x0) / nB;
+  for (const z of [z0, z1]) {
+    box('ghGlass', x0, 0.18, z - 0.004, x1, eave, z + 0.004);
+    for (let i = 0; i <= nB; i++) box('alu', x0 + i * dx - f / 2, 0, z - f / 2, x0 + i * dx + f / 2, eave, z + f / 2, { c: false });
+    box('alu', x0, eave - f, z - f / 2, x1, eave, z + f / 2, { c: false }); box('alu', x0, 0.9, z - f / 2, x1, 0.92, z + f / 2, { c: false });
+  }
+  // štíty (východní plný sklo, západní s dveřmi 0,8 m)
+  for (const x of [x0, x1]) {
+    const door = x === x0;
+    const pts = [[z0, eave], [zc, ridge], [z1, eave]];
+    prism('ghGlass', 'z', [[z0, eave], [z1, eave], [zc, ridge]], x - 0.004, x + 0.004, false);
+    if (door) { box('ghGlass', x - 0.004, 0.18, z0, x + 0.004, eave, zc - 0.42); box('ghGlass', x - 0.004, 0.18, zc + 0.42, x + 0.004, eave, z1); box('ghGlass', x - 0.004, 2.05, zc - 0.42, x + 0.004, eave, zc + 0.42, { c: false });
+      for (const zz of [zc - 0.42, zc + 0.42]) box('alu', x - f / 2, 0, zz - f / 2, x + f / 2, 2.05, zz + f / 2, { c: false });
+      box('alu', x - f / 2, 2.03, zc - 0.42, x + f / 2, 2.07, zc + 0.42, { c: false });
+      box('ghGlass', x - 0.30, 0.02, zc + 0.40, x - 0.29, 2.02, zc + 1.20, { c: false }); }   // posuvné křídlo odsunuté
+    else box('ghGlass', x - 0.004, 0.18, z0, x + 0.004, eave, z1);
+    for (const zz of [z0, z0 + (z1 - z0) / 3, z1 - (z1 - z0) / 3, z1]) if (!door || Math.abs(zz - zc) > 0.5) box('alu', x - f / 2, 0, zz - f / 2, x + f / 2, Math.min(eave + (ridge - eave) * (1 - Math.abs(zz - zc) / (zc - z0)), ridge), zz + f / 2, { c: false });
+  }
+  // střecha – sklo + krokve + hřeben
+  for (const [za, zb] of [[z0, zc], [zc, z1]]) {
+    const ya = za === z0 ? eave : ridge, yb = za === z0 ? ridge : eave;
+    quad('ghGlass', [x0, ya, za], [x1, ya, za], [x1, yb, zb], [x0, yb, zb]);
+    for (let i = 0; i <= nB; i++) prism('alu', 'z', [[za, ya - 0.02], [zb, yb - 0.02], [zb, yb + 0.02], [za, ya + 0.02]], x0 + i * dx - f / 2, x0 + i * dx + f / 2, false);
+  }
+  box('alu', x0 - 0.05, ridge - 0.03, zc - 0.05, x1 + 0.05, ridge + 0.04, zc + 0.05, { c: false });
+  for (const z of [z0 - 0.07, z1 + 0.02]) box('gutter', x0 - 0.05, eave - 0.07, z, x1 + 0.05, eave, z + 0.05, { c: false });
+  // vnitřek: vyvýšené záhony podél stěn + ulička, police
+  box('gravel', x0 + 0.05, 0.0, z0 + 0.05, x1 - 0.05, 0.02, z1 - 0.05, { c: false });
+  for (const [za, zb] of [[z0 + 0.06, z0 + 0.86], [z1 - 0.86, z1 - 0.06]]) {
+    box('timber', x0 + 0.45, 0, za, x1 - 0.08, 0.55, zb, { c: false });
+    box('soil', x0 + 0.48, 0.55, za + 0.03, x1 - 0.11, 0.57, zb - 0.03, { c: false });
+    const R = rng(Math.round(za * 100) + 999);
+    for (let x = x0 + 0.65; x < x1 - 0.2; x += 0.42) {                    // rajčata/zelenina
+      const cz = (za + zb) / 2 + (R() - 0.5) * 0.25, h = 0.35 + R() * 0.45;
+      sphere(R() < 0.5 ? 'leaf' : 'leafDark', x, 0.57 + h / 2, cz, 0.16, h / 2, 0.16, 6);
+      if (R() < 0.45) for (let k = 0; k < 3; k++) sphere('artRed', x + (R() - 0.5) * 0.2, 0.62 + R() * h * 0.8, cz + (R() - 0.5) * 0.2, 0.035, 0.035, 0.035, 5);
+      cyl('alu', x, cz + 0.12, 0.008, 0.57, 0.57 + h + 0.35, 4, false);
+    }
+    COLL.push([x0 + 0.45, 0, za, x1 - 0.08, 0.6, zb]);
+  }
+  // kolize stěn (dveře na západě volné)
+  COLL.push([x0, 0, z0 - 0.04, x1, 2.6, z0 + 0.04], [x0, 0, z1 - 0.04, x1, 2.6, z1 + 0.04], [x1 - 0.04, 0, z0, x1 + 0.04, 2.6, z1],
+    [x0 - 0.04, 0, z0, x0 + 0.04, 2.6, zc - 0.42], [x0 - 0.04, 0, zc + 0.42, x0 + 0.04, 2.6, z1]);
 }
 
 function buildAll() {
@@ -1638,7 +1762,7 @@ class Renderer {
   }
   // VR: views = [{vp:[x,y,w,h], P, V, eye}]
   renderXR(S, fb, views) {
-    const gl = this.gl, all = this.batches.concat(this.dyn);
+    const gl = this.gl, all = this.batches.concat(this.dyn).filter(b => !b.hidden);
     this.shadowPass(S, all);
     for (const t of [gl.TEXTURE0, gl.TEXTURE1, gl.TEXTURE2]) { gl.activeTexture(t); gl.bindTexture(gl.TEXTURE_2D, this.white); }
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
@@ -1647,7 +1771,7 @@ class Renderer {
   }
   render(S) { // S: scéna/stav
     const gl = this.gl, W = this.W, H = this.H;
-    const all = this.batches.concat(this.dyn);
+    const all = this.batches.concat(this.dyn).filter(b => !b.hidden);
     this.shadowPass(S, all);
     const P = M4.persp(S.fov, W / H, 0.05, 400), V = M4.look(S.eye, S.target, [0, 1, 0]);
     for (const t of [gl.TEXTURE0, gl.TEXTURE1, gl.TEXTURE2]) { gl.activeTexture(t); gl.bindTexture(gl.TEXTURE_2D, this.white); }
@@ -1686,6 +1810,19 @@ class Renderer {
   for (const k of ['oak', 'oakPlank', 'oakF', 'grainDark', 'tile', 'wtile', 'plaster', 'grass', 'paving', 'deck', 'cladding', 'stone', 'seam', 'fabric', 'concrete', 'screed', 'marble', 'blocks', 'granite']) R.tex(k, TEX[k]());
   buildAll();
   for (const k in GEO) R.batches.push(R.addBatch(k, GEO[k]));
+  for (const k in GEO) delete GEO[k];
+  // volitelné objekty jako samostatné skupiny (lze skrýt)
+  function group(fn) { const c0 = COLL.length; fn(); const coll = COLL.slice(c0), bs = []; for (const k in GEO) { const b = R.addBatch(k, GEO[k]); bs.push(b); R.batches.push(b); } for (const k in GEO) delete GEO[k]; return { bs, coll }; }
+  const OPT = { gh: { g: group(buildGreenhouse), btn: 'bGH', label: '🌱 Skleník', key: 'dum_gh' }, pool: { g: group(buildPool), off: group(buildPoolOff), btn: 'bPool', label: '🏊 Bazén', key: 'dum_pool' } };
+  function setOpt(id, on) {
+    const o = OPT[id]; o.on = on;
+    for (const b of o.g.bs) b.hidden = !on; for (const c of o.g.coll) c.off = !on;
+    if (o.off) { for (const b of o.off.bs) b.hidden = on; for (const c of o.off.coll) c.off = on; }
+    const e = document.getElementById(o.btn); if (e) { e.classList.toggle('on', on); e.textContent = o.label + (on ? '' : ' (skrytý)'); }
+    if (typeof S !== 'undefined') S.shadowDirty = true;
+    try { localStorage.setItem(o.key, on ? '1' : '0'); } catch (_) { }
+  }
+  for (const id in OPT) { let on = true; try { on = localStorage.getItem(OPT[id].key) !== '0'; } catch (_) { } OPT[id].on = on; }
 
   // --- dveře (dynamické) ---
   const doors = DOORS.map(d => {
@@ -1763,11 +1900,12 @@ class Renderer {
   const solids = COLL;
   function groundAt(x, z, feet) {
     let g = -10; const th = terrainH(x, z); if (th <= feet + STEP) g = th;
-    for (const b of solids) if (x >= b[0] && x <= b[3] && z >= b[2] && z <= b[5] && b[4] <= feet + STEP && b[4] > g) g = b[4];
+    for (const b of solids) if (!b.off && x >= b[0] && x <= b[3] && z >= b[2] && z <= b[5] && b[4] <= feet + STEP && b[4] > g) g = b[4];
     return g;
   }
   function blocked(x, z, feet) {
     for (const b of solids) {
+      if (b.off) continue;
       if (b[4] <= feet + STEP || b[1] >= feet + 1.25) continue;
       const cx = Math.max(b[0], Math.min(x, b[3])), cz = Math.max(b[2], Math.min(z, b[5]));
       if ((x - cx) ** 2 + (z - cz) ** 2 < RAD * RAD) return true;
@@ -1786,7 +1924,7 @@ class Renderer {
   // --- ovládání ---
   const keys = {};
   let started = false, locked = false, drag = null;
-  addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'KeyL') toggleLamps(); if (e.code === 'KeyM') toggleMenu(); if (e.code === 'KeyH') $('help').classList.toggle('hide'); if (e.code === 'KeyP') $('bShot').click(); });
+  addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'KeyL') toggleLamps(); if (e.code === 'KeyM') toggleMenu(); if (e.code === 'KeyH') $('help').classList.toggle('hide'); if (e.code === 'KeyP') $('bShot').click(); if (e.code === 'KeyG') setOpt('gh', !OPT.gh.on); if (e.code === 'KeyB') setOpt('pool', !OPT.pool.on); });
   addEventListener('keyup', e => { keys[e.code] = false; });
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
   const look = (dx, dy, k = 0.0024) => { P.yaw += dx * k; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch - dy * k)); };
@@ -1826,6 +1964,7 @@ class Renderer {
   function toggleLamps() { S.lampsOn = !S.lampsOn; $('bLamp').classList.toggle('on', S.lampsOn); }
   function toggleMenu() { $('menu').classList.toggle('hide'); }
   $('bLamp').onclick = toggleLamps;
+  for (const id in OPT) { $(OPT[id].btn).onclick = () => setOpt(id, !OPT[id].on); setOpt(id, OPT[id].on); }
   $('bRooms').onclick = toggleMenu;
   $('time').oninput = e => { setTime(+e.target.value); $('tval').textContent = fmtH(+e.target.value); };
   const fmtH = h => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
