@@ -634,9 +634,9 @@ function buildStairs() {
   rail('x', [[1.45, 14 * r], [2.65, 18 * r]], 10.45 - 0.02);
   rail('z', [[7.16, L2], [10.45, L2]], 2.67);
   // bočnice ramene 2 + podschodí: dubový obklad s LED průřezy
-  box('oakPanel', 1.45, 0, 8.16, 1.47, 2.3, 10.45, { c: false });
+  for (let j = 6; j <= 13; j++) box('oakPanel', 1.45, 0, 8.16 + (j - 6) * w2, 1.47, j * r, 8.16 + (j - 5) * w2, { c: false });   // obklad jen pod rameno (kopíruje stupně)
   for (let j = 6; j <= 13; j++) { const z = 8.16 + (j - 6) * w2 + w2 * 0.5; box('led', 1.471, j * r - 0.32, z - 0.012, 1.474, j * r - 0.04, z + 0.012, { c: false }); }
-  for (let i = 1; i <= 7; i++) { const z = 8.16 + i * 0.286; box('blackMatte', 1.471, 0.02, z - 0.002, 1.473, 2.2, z + 0.002, { c: false }); }
+  for (let i = 1; i <= 7; i++) { const z = 8.16 + i * w2, jh = (5 + i) * r; box('blackMatte', 1.471, 0.02, z - 0.002, 1.473, jh - 0.02, z + 0.002, { c: false }); }
 }
 
 // ---------- NÁBYTEK ----------
