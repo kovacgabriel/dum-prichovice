@@ -221,7 +221,7 @@ const ROOMS = [
   ['2.02', 'Prádelna', AW, 3.85, 2.69, 7.06, L2, L2 + 2.7, 8, [2.4, 6.5, 300]],
   ['2.03', 'Ložnice', AW, 0.45, 4.19, 3.74, L2, L2 + 2.7, 9, [3.6, 2.3, 268]],
   ['2.03', 'Ložnice', 2.89, 3.74, 4.19, 5.15, L2, L2 + 2.7, 9, null],
-  ['2.04', 'Koupelna rodiče', 4.30, 0.45, 7.50, 2.02, L2, L2 + 2.7, 10, [4.6, 1.8, 60]],
+  ['2.04', 'Koupelna rodiče', 4.30, 0.45, 7.50, 2.02, L2, L2 + 2.7, 10, [6.25, 0.75, 232]],
   ['2.05', 'Šatna rodiče', 4.30, 2.215, AE, 4.46, L2, L2 + 2.7, 11, [4.6, 3.3, 90]],
   ['2.06', 'Dětský pokoj 1', 4.31, 4.57, AE, 7.58, L2, L2 + 2.7, 12, [5.4, 6.3, 80]],
   ['2.07', 'Dětský pokoj 2', 4.31, 7.69, AE, 10.59, L2, L2 + 2.7, 13, [4.7, 9.0, 80]],
@@ -342,6 +342,11 @@ const MATS = {
   granite: { color: '#ffffff', tex: 'granite', ts: 1.0, rough: 0.8, spec: 0.08 },
   boulder: { color: '#8f8b84', tex: 'concrete', ts: 1.2, rough: 1, spec: 0.03 },
   gutter: { color: '#141517', rough: 0.4, spec: 0.35 },
+  mirror: { color: '#c9d2d6', rough: 0.05, spec: 1.0 },
+  stoneBeige: { color: '#ffffff', tex: 'stoneBeige', ts: 1.2, rough: 0.35, spec: 0.25 },
+  fluted: { color: '#ffffff', tex: 'fluted', ts: 0.8, rough: 0.5, spec: 0.12 },
+  marbleFloor: { color: '#ffffff', tex: 'marbleFloor', ts: 1.2, rough: 0.25, spec: 0.35 },
+  walnut: { color: '#e4cdb6', tex: 'oakF', ts: 1.0, rough: 0.5, spec: 0.15 },
   poolTile: { color: '#cfe0e4', tex: 'tile', ts: 0.6, rough: 0.3, spec: 0.3 },
   water: { color: '#2f9dbf', op: 0.55, rough: 0.05, spec: 1.0, cast: false },
   polycarb: { color: '#e8f1f3', op: 0.22, rough: 0.2, spec: 0.8, cast: false },
@@ -540,7 +545,7 @@ function buildSlabs() {
   for (const r of S) box('ceil', r[0], H1, r[1], r[2], 3.38, r[3]);
   const F = [[0.25, 0.25, 8.45, 7.16], [2.65, 7.16, 8.45, 11.45], [0.25, 11.45, 8.45, 15.78]];
   for (const r of F) box('wood', r[0], 3.38, r[1], r[2], L2, r[3]);
-  box('tile', 4.30, L2 + 0.002, 0.45, 7.50, L2 + 0.004, 2.02, { c: false });   // 2.04
+  box('marbleFloor', 4.30, L2 + 0.002, 0.45, 7.50, L2 + 0.004, 2.02, { c: false });   // 2.04
   box('tile', 1.69, L2 + 0.002, 11.65, 4.19, L2 + 0.004, 15.58, { c: false }); // 2.09
   // plochá střecha nad prosklenou částí
   box('membrane', 8.65, 3.38, 0, 10.20, 3.46, 11.65);
@@ -1000,13 +1005,7 @@ function buildFurniture() {
   box('oakFurn', 0.489, T, 0.55, 0.789, T + 0.45, 1.15);
   box('oakFurn', 0.489, T, 3.05, 0.789, T + 0.45, 3.65);
   box('rug', 1.6, T + 0.004, 0.9, 3.6, T + 0.012, 3.4, { c: false });
-  // 2.04 Koupelna rodiče
-  shower(6.589, 0.45, 7.489, 2.02, T, ['w']);
-  toilet(5.964, 1.49, 6.314, 2.05, 's', T);
-  vanity(4.939, 1.65, 5.689, 2.02, 's', T, 1);
-  tileWall('x', 4.30, 7.50, 2.02, -1, T, 2.2);
-  tileWall('z', 0.45, 2.02, 7.50, -1, T, 1.8);
-  tileWall('x', 4.30, 7.50, 0.45, 1, T, 1.0);
+  buildBathParents();
   // 2.05 Šatna rodiče
   for (const [a, b] of [[4.289, 5.189], [5.189, 6.089], [6.089, 6.989], [6.989, 7.889]]) wardrobe(a, 2.25, b, 2.85, 2.3, T, 's');
   for (const [a, b] of [[4.289, 5.189], [5.189, 5.944], [6.104, 6.989], [6.989, 7.890]]) wardrobe(a, 3.86, b, 4.46, 2.3, T, 'n');
@@ -1046,7 +1045,7 @@ function buildFurniture() {
   // stropní světla v místnostech
   const cl = [[1.55, 2.75, 1], [1.55, 6.1, 1], [3.3, 12.6, 1], [6.5, 13.6, 1], [3.6, 14.7, 1], [1.6, 14.7, 1], [3.5, 8.6, 1], [3.5, 10.3, 1], [4.6, 1.6, 1], [6.3, 1.6, 1], [8.0, 1.6, 1], [4.6, 3.3, 1], [8.0, 3.3, 1], [5.0, 5.55, 1], [7.7, 5.55, 1], [6.35, 6.9, 1], [9.0, 9.7, 1]];
   for (const [x, z] of cl) ceilLight(x, z, H1);
-  const ca = [[2.6, 2.2], [3.5, 8.9], [6.0, 1.2], [6.0, 3.35], [5.9, 6.1], [5.9, 9.1], [5.9, 13.0], [3.0, 13.6], [1.9, 5.4]];
+  const ca = [[2.6, 2.2], [3.5, 8.9], [6.0, 3.35], [5.9, 6.1], [5.9, 9.1], [5.9, 13.0], [3.0, 13.6], [1.9, 5.4]];
   for (const [x, z] of ca) ceilLight(x, z, L2 + FLAT, 0.2);
 }
 
@@ -1329,6 +1328,90 @@ function buildGreenhouse() {
     [x0 - 0.04, 0, z0, x0 + 0.04, 2.6, zc - 0.42], [x0 - 0.04, 0, zc + 0.42, x0 + 0.04, 2.6, z1]);
 }
 
+// ---------- 2.04 KOUPELNA RODIČŮ – design: béžový kámen + drážkované panely, černé baterie ----------
+function buildBathParents() {
+  const T = L2, X0 = 4.30, X1 = 7.50, Z0 = 0.45, Z1 = 2.02, e = 0.012;
+  const ceil = (x, z) => T + atticCeil(x, z) - 0.005;
+  // obklad stěny rovnoběžné s osou x (sever/jih) – kopíruje šikminu, vynechá otvory [u0,u1,y0,y1]
+  const cladX = (m, z, side, u0, u1, holes = []) => {
+    const tz0 = side > 0 ? z : z - e, tz1 = side > 0 ? z + e : z;
+    const piece = (a, b, ya, ytopFn) => {
+      if (b - a < 0.005) return;
+      const ks = ATTIC_KINKS.filter(k => k > a && k < b), us = [a, ...ks, b];
+      const poly = [[a, ya], [b, ya]]; for (let i = us.length - 1; i >= 0; i--) poly.push([us[i], ytopFn(us[i])]);
+      prism(m, 'x', poly, tz0, tz1, false);
+    };
+    let cur = u0;
+    for (const h of holes.sort((p, q) => p[0] - q[0])) {
+      piece(cur, h[0], T, u => ceil(u, z));
+      piece(h[0], h[1], T, () => h[2]); piece(h[0], h[1], h[3], u => ceil(u, z));
+      cur = h[1];
+    }
+    piece(cur, u1, T, u => ceil(u, z));
+  };
+  const cladZ = (m, x, side, z0, z1, y1, holes = []) => {
+    const t0 = side > 0 ? x : x - e, t1 = side > 0 ? x + e : x;
+    let cur = z0;
+    for (const h of holes) { box(m, t0, T, cur, t1, y1, h[0], { c: false }); box(m, t0, h[3], h[0], t1, y1, h[1], { c: false }); cur = h[1]; }
+    box(m, t0, T, cur, t1, y1, z1, { c: false });
+  };
+  // stěny: béžový kámen, drážkované panely za WC a ve sprše
+  cladX('stoneBeige', Z0, 1, X0, X1, [[5.09, 5.99, T + 0.4, T + 2.4], [6.55, X1, T, T + 3]]);
+  cladX('fluted', Z0, 1, 6.55, X1);                                     // zadní stěna sprchy
+  cladX('stoneBeige', Z1, -1, X0, 5.95);
+  cladX('fluted', Z1, -1, 5.95, X1);                                     // za WC a ve sprše
+  cladZ('stoneBeige', X0, 1, Z0, Z1, T + 2.6, [[0.65, 1.45, 0, T + 2.1]]);
+  cladZ('stoneBeige', X1, -1, Z0, Z1, ceil(X1, 1));
+  // walk-in sprcha: pevná skleněná stěna s černým profilem, dešťová hlavice, termostat, podsvícená nika
+  box('showerGlass', 6.55, T, Z0 + e, 6.562, T + 2.0, 1.35);
+  box('blackMatte', 6.546, T + 2.0, Z0 + e, 6.566, T + 2.02, 1.35, { c: false });
+  box('blackMatte', 6.546, T, 1.33, 6.566, T + 2.02, 1.35, { c: false });
+  box('blackMatte', 6.62, T + 0.004, 0.52, 6.66, T + 0.008, 1.95, { c: false });       // liniový žlab
+  cyl('blackMatte', 7.0, 1.0, 0.15, T + 1.98, T + 2.0, 24, false);                       // hlavice
+  box('blackMatte', 6.99, T + 2.0, 0.46, 7.01, T + 2.02, 1.0, { c: false });             // rameno ze zdi
+  cyl('blackMatte', 7.15, Z0 + e + 0.01, 0.06, T + 1.05, T + 1.07, 20, false);
+  box('blackMatte', 7.08, T + 1.0, Z0 + e, 7.22, T + 1.14, Z0 + e + 0.02, { c: false }); // termostat
+  box('blackMatte', 7.33, T + 0.9, Z0 + e, 7.35, T + 1.75, Z0 + e + 0.03, { c: false }); // tyč ruční sprchy
+  box('stoneBeige', 6.70, T + 1.05, Z1 - e - 0.10, 7.35, T + 1.07, Z1 - e, { c: false }); // nika – police
+  box('cream', 6.70, T + 1.07, Z1 - e - 0.002, 7.35, T + 1.32, Z1 - e, { c: false });
+  box('led', 6.70, T + 1.315, Z1 - e - 0.09, 7.35, T + 1.32, Z1 - e - 0.08, { c: false });
+  for (const [x, h] of [[6.85, 0.16], [6.98, 0.2], [7.15, 0.13]]) cyl('blackMatte', x, Z1 - 0.06, 0.03, T + 1.07, T + 1.07 + h, 10, false);
+  // závěsné WC na předstěně s drážkovaným obkladem, černé tlačítko
+  box('fluted', 5.95, T, Z1 - 0.18, 6.52, T + 1.12, Z1 - e);
+  box('blackMatte', 6.10, T + 0.92, Z1 - 0.185, 6.36, T + 1.06, Z1 - 0.18, { c: false });
+  sphere('porcelain', 6.235, T + 0.32, Z1 - 0.18 - 0.28, 0.18, 0.12, 0.27, 16);
+  box('porcelain', 6.07, T + 0.26, Z1 - 0.44, 6.40, T + 0.42, Z1 - 0.18, { c: false });
+  box('porcelain', 6.05, T + 0.42, Z1 - 0.72, 6.42, T + 0.45, Z1 - 0.18, { c: false });
+  COLL.push([6.0, T, Z1 - 0.75, 6.47, T + 0.45, Z1]);
+  box('blackMatte', 6.47, T, Z1 - 0.12, 6.50, T + 0.42, Z1 - 0.09, { c: false });            // štětka
+  // závěsná ořechová skříňka se zaobleným rohem, kamenná deska, umyvadlo na desku, černá baterie
+  const vz0 = 1.50, vx0 = 4.55, vx1 = 5.80, rr = (Z1 - vz0) / 2, vc = Z1 - rr;
+  box('walnut', vx0, T + 0.42, vz0, vx1 - rr, T + 0.80, Z1 - e);
+  cyl('walnut', vx1 - rr, vc, rr, T + 0.42, T + 0.80, 24);
+  for (let i = 1; i < 6; i++) box('blackMatte', vx0 + (vx1 - rr - vx0) * i / 6, T + 0.44, vz0 - 0.002, vx0 + (vx1 - rr - vx0) * i / 6 + 0.004, T + 0.78, vz0, { c: false });
+  box('stoneBeige', vx0 - 0.01, T + 0.80, vz0 - 0.02, vx1 - rr, T + 0.84, Z1 - e);
+  cyl('stoneBeige', vx1 - rr, vc, rr + 0.02, T + 0.80, T + 0.84, 24, false);
+  box('led', vx0 + 0.05, T + 0.415, vz0 + 0.05, vx1 - 0.2, T + 0.42, Z1 - 0.05, { c: false });      // podsvícení pod skříňkou
+  cyl('porcelain', 5.10, 1.76, 0.21, T + 0.84, T + 0.98, 28, false);                         // umyvadlo – mísa
+  cyl('marbleFloor', 5.10, 1.76, 0.18, T + 0.981, T + 0.983, 28, false);
+  cyl('blackMatte', 5.10, 1.96, 0.018, T + 0.84, T + 1.20, 10, false);                        // vysoká baterie
+  box('blackMatte', 5.09, T + 1.17, 1.80, 5.11, T + 1.20, 1.96, { c: false });
+  COLL.push([vx0, T, vz0, vx1, T + 0.84, Z1]);
+  // zrcadlo s obloukem a LED podsvícením
+  const arch = (cx, w, y0, y1, r) => { const p = [[cx - w / 2, y0], [cx + w / 2, y0], [cx + w / 2, y1 - r]]; for (let i = 1; i < 12; i++) { const a = i / 12 * Math.PI; p.push([cx + Math.cos(a) * r, y1 - r + Math.sin(a) * r]); } p.push([cx - w / 2, y1 - r]); return p; };
+  prism('led', 'x', arch(5.15, 0.76, T + 1.02, T + 2.12, 0.38), Z1 - e - 0.012, Z1 - e - 0.006, false);
+  prism('mirror', 'x', arch(5.15, 0.70, T + 1.05, T + 2.09, 0.35), Z1 - e - 0.03, Z1 - e - 0.012, false);
+  // černý žebříkový radiátor, háčky, ručník
+  for (const x of [4.42, 4.92]) box('blackMatte', x, T + 0.25, Z0 + e + 0.03, x + 0.03, T + 1.75, Z0 + e + 0.06, { c: false });
+  for (let y = T + 0.32; y < T + 1.72; y += 0.11) box('blackMatte', 4.42, y, Z0 + e + 0.035, 4.95, y + 0.02, Z0 + e + 0.055, { c: false });
+  box('linen', 4.55, T + 1.05, Z0 + e + 0.055, 4.85, T + 1.62, Z0 + e + 0.075, { c: false });
+  for (const z of [1.62, 1.74, 1.86]) box('blackMatte', X0 + e, T + 1.62, z, X0 + e + 0.05, T + 1.65, z + 0.025, { c: false });
+  box('linen', X0 + e + 0.01, T + 1.05, 1.68, X0 + e + 0.05, T + 1.63, 1.84, { c: false });
+  // bodová světla do podhledu
+  for (const [x, z] of [[4.9, 0.95], [5.9, 0.95], [5.15, 1.55]]) { cyl('blackMatte', x, z, 0.045, T + FLAT - 0.006, T + FLAT, 14, false); cyl('bulb', x, z, 0.03, T + FLAT - 0.008, T + FLAT - 0.005, 12, false); LAMPS.push([x, T + FLAT - 0.3, z]); }
+  // jemné LED pásky: nika už svítí, plus pásek nad sprchou pod šikminou
+}
+
 function buildAll() {
   for (const w of WALLS) buildWall(w);
   for (const o of OPENINGS) buildOpening(o);
@@ -1485,6 +1568,27 @@ const TEX = {
       for (let k = 0; k < 18; k++) { x.fillStyle = `rgba(${R() < 0.5 ? 30 : 230},${R() < 0.5 ? 30 : 225},${R() < 0.5 ? 30 : 220},${0.15 + R() * 0.2})`; x.fillRect(i * w + ox + pad + R() * (w - 2 * pad), r * w + pad + R() * (w - 2 * pad), 1.6, 1.6); }
     }
     noiseLayer(x, S, S, 12, 21); return c;
+  },
+  stoneBeige(S = 512) { // velkoformát 1200×600 v kamenném vzhledu (teplá béžová), textura 1,2 m
+    const [c, x] = cnv(S, S), R = rng(151);
+    x.fillStyle = '#e2d6c6'; x.fillRect(0, 0, S, S);
+    for (let k = 0; k < 160; k++) { const l = R() < 0.6; x.fillStyle = `rgba(${l ? 244 : 200},${l ? 237 : 186},${l ? 226 : 168},${0.04 + R() * 0.05})`; x.beginPath(); x.ellipse(R() * S, R() * S, 20 + R() * 90, 10 + R() * 40, R() * 3, 0, 7); x.fill(); }
+    for (let k = 0; k < 9; k++) { x.strokeStyle = `rgba(170,152,132,${0.08 + R() * 0.1})`; x.lineWidth = 0.6 + R(); x.beginPath(); let px = R() * S, py = 0; x.moveTo(px, py); while (py < S) { py += 14; px += (R() - 0.45) * 16; x.lineTo(px, py); } x.stroke(); }
+    noiseLayer(x, S, S, 9, 31);
+    x.fillStyle = 'rgba(235,228,218,0.9)'; x.fillRect(0, 0, 2, S); x.fillRect(0, 0, S, 2); x.fillRect(0, S / 2 - 1, S, 2);
+    return c;
+  },
+  fluted(S = 256) { // drážkovaný panel – svislé lamely á 2 cm (textura 0,8 m = 40 lamel)
+    const [c, x] = cnv(S, S), n = 40, w = S / n;
+    for (let i = 0; i < n; i++) { const g = x.createLinearGradient(i * w, 0, i * w + w, 0); g.addColorStop(0, '#b8ab9b'); g.addColorStop(0.35, '#e6ddd1'); g.addColorStop(0.65, '#ece4d9'); g.addColorStop(1, '#a99c8c'); x.fillStyle = g; x.fillRect(i * w, 0, w, S); }
+    noiseLayer(x, S, S, 6, 41); return c;
+  },
+  marbleFloor(S = 512) { // světlý mramor 1200×1200 (textura 1,2 m)
+    const [c, x] = cnv(S, S), R = rng(161);
+    x.fillStyle = '#ece8e2'; x.fillRect(0, 0, S, S); noiseLayer(x, S, S, 5, 3);
+    for (let k = 0; k < 7; k++) { x.strokeStyle = `rgba(120,118,115,${0.18 + R() * 0.25})`; x.lineWidth = 0.6 + R() * 1.4; x.beginPath(); let px = 0, py = R() * S; x.moveTo(px, py); while (px < S) { px += 18; py += (R() - 0.5) * 26; x.lineTo(px, py); } x.stroke(); }
+    x.fillStyle = 'rgba(200,196,190,0.9)'; x.fillRect(0, 0, 2, S); x.fillRect(0, 0, S, 2);
+    return c;
   },
   fabric(S = 256) { const [c, x] = cnv(S, S), R = rng(91); x.fillStyle = '#c8c5bf'; x.fillRect(0, 0, S, S); for (let i = 0; i < S; i += 2) { x.fillStyle = `rgba(0,0,0,${0.03 + R() * 0.04})`; x.fillRect(0, i, S, 1); x.fillRect(i, 0, 1, S); } noiseLayer(x, S, S, 14, 3); return c; },
 };
@@ -1808,7 +1912,7 @@ class Renderer {
   const MOBILE = matchMedia('(pointer:coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
   if (MOBILE) { R.mobile = true; }
   // --- textury + geometrie ---
-  for (const k of ['oak', 'oakPlank', 'oakF', 'grainDark', 'tile', 'wtile', 'plaster', 'grass', 'paving', 'deck', 'cladding', 'stone', 'seam', 'fabric', 'concrete', 'screed', 'marble', 'blocks', 'granite']) R.tex(k, TEX[k]());
+  for (const k of ['oak', 'oakPlank', 'oakF', 'grainDark', 'tile', 'wtile', 'plaster', 'grass', 'paving', 'deck', 'cladding', 'stone', 'seam', 'fabric', 'concrete', 'screed', 'marble', 'blocks', 'granite', 'stoneBeige', 'fluted', 'marbleFloor']) R.tex(k, TEX[k]());
   buildAll();
   for (const k in GEO) R.batches.push(R.addBatch(k, GEO[k]));
   for (const k in GEO) delete GEO[k];
