@@ -258,8 +258,8 @@ function outsideH(x, z) {
 }
 // BAZÉN (doplněno na přání, není ve výkresech): vana 3,0 × 7,0 m, okolí dřevěná terasa
 const POOL = { x0: 12.35, x1: 15.35, z0: 5.25, z1: 11.75, depth: 1.4 };   // vana 3,0 × 6,5 m (červeně vyznačené místo)
-const POOL_DECK = { x0: 13.7, x1: 18.0, z0: 4.35, z1: 12.6 };            // dřevěná terasa kolem (část je dlažba u domu)
-const inPoolDeck = (x, z) => x > POOL_DECK.x0 - 0.6 && x < POOL_DECK.x1 + 0.6 && z > POOL_DECK.z0 - 0.3 && z < POOL_DECK.z1 + 0.6;
+const POOL_DECK = { x0: 10.26, x1: 18.0, z0: 4.25, z1: 12.6 };            // dřevěná terasa kolem (část je dlažba u domu)
+const inPoolDeck = (x, z) => x > POOL_DECK.x0 && x < POOL_DECK.x1 + 0.6 && z > POOL_DECK.z0 - 0.3 && z < POOL_DECK.z1 + 0.6;
 // SKLENÍK (doplněno na přání) v SV rohu pozemku: 4,0 × 2,5 m, dveře ve štítu na západ
 const GH = { x0: 21.2, x1: 25.2, z0: -1.55, z1: 0.95 };
 const inGH = (x, z, m = 0) => x > GH.x0 - m && x < GH.x1 + m && z > GH.z0 - m && z < GH.z1 + m;
@@ -531,7 +531,8 @@ function buildOpening(o) {
 // ---------- PODLAHY, STROPY, STŘECHA ----------
 function buildSlabs() {
   // podlaha 1.NP (dřevo) + dlažba v mokrých místnostech
-  box('wood', 0.25, -0.30, 0.25, 10.20, 0, 15.78);
+  box('wood', 0.25, -0.30, 0.25, 10.20, 0, 11.65);
+  box('wood', 0.25, -0.30, 11.65, 8.45, 0, 15.78);
   box('tile', 0.45, 0.002, 0.45, 2.65, 0.004, 5.03, { c: false });   // 1.05 tech.
   box('tile', 2.95, 0.002, 13.80, 4.23, 0.004, 15.58, { c: false }); // 1.10 WC
   // strop 1.NP / podlaha podkroví (bez otvoru schodiště x0.45–2.65, z7.16–11.45)
