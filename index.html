@@ -233,7 +233,7 @@ const VIEWS = [
   ['Venku – zahrada (JV)', [21.0, 13.0, 290], 0],
   ['Venku – vjezd a vstup (JZ)', [-4.5, 21.0, 20], 0],
   ['Venku – terasa', [13.5, 6.5, 330], 0],
-  ['Venku – bazén', [17.4, 13.8, 330], 0],
+  ['Venku – bazén', [18.9, 13.8, 330], 0],
   ['Venku – skleník', [19.6, 0.4, 85], 0],
   ['Ulice – pohled na dům', [8.0, 27.0, 352], 0],
   ['Ulice – roh (JV)', [31.0, 27.0, 310], 0],
@@ -257,8 +257,8 @@ function outsideH(x, z) {
   return 0;
 }
 // BAZÉN (doplněno na přání, není ve výkresech): vana 3,0 × 7,0 m, okolí dřevěná terasa
-const POOL = { x0: 12.35, x1: 15.35, z0: 5.25, z1: 11.75, depth: 1.4 };   // vana 3,0 × 6,5 m (červeně vyznačené místo)
-const POOL_DECK = { x0: 10.26, x1: 18.0, z0: 4.25, z1: 12.6 };            // dřevěná terasa kolem (část je dlažba u domu)
+const POOL = { x0: 13.85, x1: 16.85, z0: 5.25, z1: 11.75, depth: 1.4 };   // vana 3,0 × 6,5 m (červeně vyznačené místo)
+const POOL_DECK = { x0: 10.26, x1: 19.5, z0: 4.25, z1: 12.6 };            // dřevěná terasa kolem (část je dlažba u domu)
 const inPoolDeck = (x, z) => x > POOL_DECK.x0 && x < POOL_DECK.x1 + 0.6 && z > POOL_DECK.z0 - 0.3 && z < POOL_DECK.z1 + 0.6;
 // SKLENÍK (doplněno na přání) v SV rohu pozemku: 4,0 × 2,5 m, dveře ve štítu na západ
 const GH = { x0: 21.2, x1: 25.2, z0: -1.55, z1: 0.95 };
@@ -1271,10 +1271,10 @@ function buildPool() {
     box('cream', xb - 0.32, y0 + 0.84, za + 0.1, xb - 0.12, y0 + 0.96, zb - 0.1, { c: false });
     COLL.push([xa, 0, za, xb, 0.5, zb]);
   };
-  for (const cz of [6.6, 7.9, 9.2]) lounger(cz, 15.85);
-  cyl('blackMatte', 16.8, 10.35, 0.22, dy + 0.42, dy + 0.45, 20); cyl('blackMatte', 16.8, 10.35, 0.02, dy, dy + 0.42, 8, false);
-  cyl('alu', 17.4, 11.3, 0.025, dy, 2.4, 8, false); cyl('blackMatte', 17.4, 11.3, 0.25, dy, dy + 0.06, 16);
-  for (let i = 0; i < 8; i++) { const a0 = i / 8 * Math.PI * 2, a1 = (i + 1) / 8 * Math.PI * 2; tri('linen', [17.4, 2.65, 11.3], [17.4 + Math.cos(a0) * 1.35, 2.3, 11.3 + Math.sin(a0) * 1.35], [17.4 + Math.cos(a1) * 1.35, 2.3, 11.3 + Math.sin(a1) * 1.35], [0, 1, 0]); }
+  for (const cz of [6.6, 7.9, 9.2]) lounger(cz, 17.35);
+  cyl('blackMatte', 18.3, 10.35, 0.22, dy + 0.42, dy + 0.45, 20); cyl('blackMatte', 18.3, 10.35, 0.02, dy, dy + 0.42, 8, false);
+  cyl('alu', 18.9, 11.3, 0.025, dy, 2.4, 8, false); cyl('blackMatte', 18.9, 11.3, 0.25, dy, dy + 0.06, 16);
+  for (let i = 0; i < 8; i++) { const a0 = i / 8 * Math.PI * 2, a1 = (i + 1) / 8 * Math.PI * 2; tri('linen', [18.9, 2.65, 11.3], [18.9 + Math.cos(a0) * 1.35, 2.3, 11.3 + Math.sin(a0) * 1.35], [18.9 + Math.cos(a1) * 1.35, 2.3, 11.3 + Math.sin(a1) * 1.35], [0, 1, 0]); }
 }
 // výplň místa bazénu, když je bazén skrytý
 function buildPoolOff() { const { x0, x1, z0, z1 } = POOL; box('grass', x0 - 0.05, -0.05, z0 - 0.05, x1 + 0.05, 0.0, z1 + 0.05, { c: false }); }
