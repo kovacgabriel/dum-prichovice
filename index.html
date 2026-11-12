@@ -349,6 +349,7 @@ const MATS = {
   num12: { color: '#ffffff', tex: 'num12', rough: 0.3, spec: 0.4 },
   checker: { color: '#ffffff', tex: 'checker', ts: 0.4, rough: 0.5, spec: 0.1 },
   track: { color: '#ffffff', tex: 'track', rough: 1, spec: 0 },
+  kamado: { color: '#b0261f', rough: 0.3, spec: 0.45 },
   mirror: { color: '#c9d2d6', rough: 0.05, spec: 1.0 },
   stoneBeige: { color: '#ffffff', tex: 'stoneBeige', ts: 1.2, rough: 0.35, spec: 0.25 },
   fluted: { color: '#ffffff', tex: 'fluted', ts: 0.8, rough: 0.5, spec: 0.12 },
@@ -1107,6 +1108,7 @@ function buildExterior() {
   // keře podél jižní strany (za dlažbou)
   for (let x = 1; x < 8; x += 1.6) sphere('leaf', x, terrainH(x, 17.8) + 0.3, 17.8, 0.55, 0.42, 0.5, 8);
   buildFence();
+  buildKamado(11.05, 1.25);
 }
 
 // ---------- OPLOCENÍ (D1.10, D1.11) ----------
@@ -1491,6 +1493,33 @@ function buildF1Room() {
   box('track', 5.0, T + 0.002, 8.75, 7.6, T + 0.007, 9.55, { c: false, skip: 't' });
   // šachovnicové prapory u okna
   for (const [z, s] of [[7.86, 1], [10.42, -1]]) { box('silver', 8.15, T, z - 0.012, 8.17, T + 1.9, z + 0.012, { c: false }); box('checker', 8.16, T + 1.45, z, 8.165, T + 1.85, z + s * 0.45, { c: false }); }
+}
+
+// ---------- KERAMICKÝ GRIL KAMADO (červený, na vozíku) pod pergolou ----------
+function buildKamado(cx, cz) {
+  const y0 = 0.0, cartH = 0.58, r = 0.34;
+  // vozík: černý ocelový rám na kolečkách
+  for (const [dx, dz] of [[-0.28, -0.28], [0.25, -0.28], [-0.28, 0.25], [0.25, 0.25]]) {
+    box('blackMatte', cx + dx, y0 + 0.08, cz + dz, cx + dx + 0.03, y0 + cartH, cz + dz + 0.03, { c: false });
+    cylZ('blackMatte', cx + dx + 0.015, y0 + 0.05, cz + dz - 0.01, cz + dz + 0.04, 0.05, 10);
+  }
+  box('blackMatte', cx - 0.28, y0 + cartH - 0.03, cz - 0.28, cx + 0.28, y0 + cartH, cz + 0.28, { c: false });
+  box('blackMatte', cx - 0.28, y0 + 0.2, cz - 0.28, cx + 0.28, y0 + 0.22, cz + 0.28, { c: false });
+  // keramické vejce: spodní část + víko, černý pás s pantem
+  sphere('kamado', cx, y0 + cartH + r * 0.85, cz, r, r * 0.9, r, 18);
+  cyl('blackMatte', cx, cz, r * 1.01, y0 + cartH + r * 0.82, y0 + cartH + r * 0.92, 24, false);   // pás / spára víka
+  box('blackMatte', cx - 0.06, y0 + cartH + r * 0.7, cz - r - 0.06, cx + 0.06, y0 + cartH + r * 1.05, cz - r + 0.02, { c: false }); // pant (vzadu)
+  cyl('blackMatte', cx, cz, 0.07, y0 + cartH + r * 1.7, y0 + cartH + r * 1.82, 14, false);        // horní průduch
+  cyl('chrome', cx + 0.1, cz + 0.22, 0.035, y0 + cartH + r * 1.25, y0 + cartH + r * 1.32, 12, false); // teploměr
+  box('blackMatte', cx - 0.08, y0 + cartH + 0.05, cz + r - 0.02, cx + 0.08, y0 + cartH + 0.16, cz + r + 0.02, { c: false }); // spodní průduch
+  box('blackMatte', cx - 0.12, y0 + cartH + r * 1.0, cz + r + 0.02, cx + 0.12, y0 + cartH + r * 1.06, cz + r + 0.08, { c: false }); // madlo
+  // boční odkládací desky
+  for (const sx of [-1, 1]) {
+    const a = cx + sx * (r + 0.02), b = cx + sx * (r + 0.42);
+    box('oakPanel', Math.min(a, b), y0 + 0.86, cz - 0.2, Math.max(a, b), y0 + 0.885, cz + 0.2, { c: false });
+    box('blackMatte', Math.min(a, b), y0 + 0.83, cz - 0.02, Math.max(a, b), y0 + 0.86, cz + 0.02, { c: false });
+  }
+  COLL.push([cx - r - 0.44, y0, cz - r - 0.06, cx + r + 0.44, y0 + 1.3, cz + r + 0.1]);
 }
 
 function buildAll() {
