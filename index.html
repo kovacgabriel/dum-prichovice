@@ -23,6 +23,13 @@
   #mini { position:fixed; right:12px; bottom:12px; width:118px; height:162px; border-radius:10px; border:1px solid var(--line); cursor:pointer; }
   #hint { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); padding:7px 14px; font-size:12.5px; color:var(--muted); white-space:nowrap; }
   #cross { position:fixed; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.55); pointer-events:none; }
+  #sunPanel { position:fixed; top:60px; left:12px; width:320px; padding:12px 14px; z-index:7; font-size:13.5px; }
+  #sunPanel .qh { display:flex; align-items:center; gap:10px; margin-bottom:10px; } #sunPanel .qh b { flex:1; }
+  #sunPanel .qbtns { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0 8px; } #sunPanel .qbtns .btn { padding:6px 2px; font-size:12.5px; }
+  #sunPanel label { display:block; margin:6px 0; color:var(--muted); } #sunPanel label span { float:right; }
+  #sunPanel input[type=range] { width:100%; accent-color:var(--acc); margin-top:4px; }
+  #sunPanel input[type=date] { margin-left:8px; background:#1b1d22; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit; color-scheme:dark; }
+  #tval { cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; white-space:nowrap; }
   #qPanel { position:fixed; top:60px; left:12px; width:300px; padding:12px 14px; z-index:6; font-size:13.5px; }
   #qPanel .qh { display:flex; align-items:center; gap:10px; margin-bottom:10px; } #qPanel .qh b { flex:1; }
   #qFps { color:var(--muted); font-variant-numeric:tabular-nums; font-size:12px; }
@@ -61,13 +68,23 @@
 <div id="top">
   <div id="room" class="panel">1.06 · Obývací pokoj</div>
   <button id="bRooms" class="btn">☰ Místnosti</button>
-  <div id="timebox" class="panel">☀ <input id="time" type="range" min="5" max="21.5" step="0.25" value="10"><span id="tval">10:00</span></div>
+  <div id="timebox" class="panel">☀ <input id="time" type="range" min="0" max="1435" step="5" value="600"><span id="tval" title="Nastavit datum a čas">10:00</span></div>
   <button id="bLamp" class="btn">💡 Světla</button>
   <button id="bGH" class="btn on">🌱 Skleník</button>
   <button id="bPool" class="btn on">🏊 Bazén</button>
   <button id="bQ" class="btn">⚙ Kvalita</button>
   <button id="bShot" class="btn" title="Snímek obrazovky (P)">📷 Snímek</button>
   <button id="bVR" class="btn hide">🥽 VR</button>
+</div>
+<div id="sunPanel" class="panel hide">
+  <div class="qh"><b>Slunce a stíny</b><button id="sunClose" class="btn" style="padding:3px 9px">✕</button></div>
+  <label>Datum <input id="sunDate" type="date"></label>
+  <div class="qbtns"><button class="btn" data-day="0.0">Dnes</button><button class="btn" data-day="3.20">20. 3.</button><button class="btn" data-day="6.21">21. 6.</button><button class="btn" data-day="12.21">21. 12.</button></div>
+  <label>Čas <span id="tzInfo"></span><input id="sunTime" type="range" min="0" max="1435" step="5"></label>
+  <div class="qbtns"><button class="btn" data-min="480">8:00</button><button class="btn" data-min="720">12:00</button><button class="btn" data-min="960">16:00</button><button class="btn" data-min="1140">19:00</button></div>
+  <button id="sunPlay" class="btn" style="width:100%;margin:4px 0 8px">▶ Přehrát den</button>
+  <div id="sunInfo" class="qnote" style="color:var(--ink)"></div>
+  <div class="qnote">Skutečná poloha slunce pro Příchovice u Přeštic, dům natočený podle koordinační situace. Čas je místní (SEČ/SELČ). Nebere v úvahu okolní stavby a stromy mimo pozemek.</div>
 </div>
 <div id="qPanel" class="panel hide">
   <div class="qh"><b>Kvalita zobrazení</b><span id="qFps"></span><button id="qClose" class="btn" style="padding:3px 9px">✕</button></div>
@@ -93,7 +110,7 @@
       <tr class="touch-only"><td>Levý palec</td><td>chůze (virtuální joystick)</td></tr>
       <tr class="touch-only"><td>Pravý palec</td><td>rozhlížení</td></tr>
       <tr><td>☰ Místnosti</td><td>skok do kterékoli místnosti nebo ven</td></tr>
-      <tr><td>☀ Čas</td><td>poloha slunce – stíny a světlo v interiéru</td></tr>
+      <tr><td>☀ Slunce</td><td>skutečná poloha slunce podle data a času – klikněte na datum v liště</td></tr>
       <tr><td>💡 Světla</td><td>rozsvícení svítidel (večer)</td></tr>
     </table>
     <button id="start">Vstoupit do domu</button>
@@ -2178,14 +2195,42 @@ class Renderer {
   };
   const P = { x: 9.2, z: 4.6, feet: 0, vy: 0, yaw: 300 * Math.PI / 180, pitch: -0.05 };
   let hour = 10;
-  function setTime(h) {
-    hour = h;
-    const az = (180 + (h - 12) * 15) * Math.PI / 180;
-    const el = Math.max(-0.2, 52 * Math.sin(Math.PI * (h - 5.5) / 15)) * Math.PI / 180;
-    S.sunDir = norm([Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)]);
-    const day = Math.max(0, Math.min(1, el / (12 * Math.PI / 180)));
-    const warm = 1 - Math.max(0, Math.min(1, (el - 3 * Math.PI / 180) / (25 * Math.PI / 180)));
-    S.sunCol = [3.1 * day, (2.9 - 0.9 * warm) * day, (2.6 - 1.5 * warm) * day];
+  // ===== SLUNCE: skutečná poloha pro k.ú. Příchovice u Přeštic (49,598° s. š., 13,343° v. d.) =====
+  // Dům je natočený: osa x domu míří na azimut 108,5° (sever je dle situace C2 o 18,5° pootočený proti ose -z)
+  const SITE = { lat: 49.598, lon: 13.343, rot: 18.5 };
+  const RAD_ = Math.PI / 180;
+  function lastSunday(y, m) { const d = new Date(Date.UTC(y, m + 1, 0)); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d; }
+  function czOffset(y, mo, d, h) { // SELČ: poslední neděle v březnu 2:00 → poslední neděle v říjnu 3:00
+    const t = Date.UTC(y, mo, d, h) - 3600000;            // přibližně UTC v zimním čase
+    const s0 = lastSunday(y, 2).getTime() + 3600000, s1 = lastSunday(y, 9).getTime() + 3600000;
+    return t >= s0 && t < s1 ? 2 : 1;
+  }
+  function sunPos(ms) {
+    const n = ms / 86400000 + 2440587.5 - 2451545.0;
+    const L = (280.460 + 0.9856474 * n) % 360, g = (357.528 + 0.9856003 * n) * RAD_;
+    const lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * RAD_, eps = (23.439 - 0.0000004 * n) * RAD_;
+    const ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam)), dec = Math.asin(Math.sin(eps) * Math.sin(lam));
+    const gmst = (280.46061837 + 360.98564736629 * n) % 360, H = (gmst + SITE.lon) * RAD_ - ra, la = SITE.lat * RAD_;
+    let el = Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(H));
+    const az = Math.atan2(-Math.sin(H), Math.tan(dec) * Math.cos(la) - Math.sin(la) * Math.cos(H));
+    const elD = el / RAD_; if (elD > -1) el += (1.02 / Math.tan((elD + 10.3 / (elD + 5.11)) * RAD_)) / 60 * RAD_;   // refrakce
+    return { az: (az / RAD_ + 360) % 360, el: el / RAD_ };
+  }
+  const SUN = { y: 2026, mo: 5, d: 21, min: 600, play: false };
+  { const t = new Date(); SUN.y = t.getFullYear(); SUN.mo = t.getMonth(); SUN.d = t.getDate(); }
+  const utcMs = (m) => Date.UTC(SUN.y, SUN.mo, SUN.d, 0, 0) + (m - czOffset(SUN.y, SUN.mo, SUN.d, Math.floor(m / 60)) * 60) * 60000;
+  function sunTimes() {
+    let rise = null, set = null, prev = sunPos(utcMs(0)).el, maxEl = -90, noon = 0;
+    for (let m = 5; m <= 1440; m += 5) { const e = sunPos(utcMs(m)).el; if (prev < -0.83 && e >= -0.83) rise = m; if (prev >= -0.83 && e < -0.83) set = m; if (e > maxEl) { maxEl = e; noon = m; } prev = e; }
+    return { rise, set, maxEl, noon };
+  }
+  const fmtM = m => m == null ? '—' : `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+  function applySun() {
+    const { az, el: elD } = sunPos(utcMs(SUN.min)), el = Math.max(-0.2 * 180 / Math.PI, elD) * RAD_, A = (az - SITE.rot) * RAD_;
+    S.sunDir = norm([Math.sin(A) * Math.cos(el), Math.sin(el), -Math.cos(A) * Math.cos(el)]);
+    const day = Math.max(0, Math.min(1, (elD + 2) / 14));
+    const warm = 1 - Math.max(0, Math.min(1, (elD - 3) / 25));
+    S.sunCol = elD > -0.5 ? [3.1 * day, (2.9 - 0.9 * warm) * day, (2.6 - 1.5 * warm) * day] : [0, 0, 0];
     S.skyTop = [0.20 + 0.25 * day, 0.30 + 0.45 * day, 0.45 + 0.75 * day].map(v => v * (0.15 + 0.85 * day));
     S.skyHor = [0.55 + 0.35 * warm * day, 0.62 + 0.15 * day, 0.70 + 0.1 * day].map(v => v * (0.12 + 0.88 * day));
     S.gnd = [0.25, 0.27, 0.2].map(v => v * (0.1 + 0.9 * day));
@@ -2195,8 +2240,12 @@ class Renderer {
     S.lampCol = [0.62, 0.48, 0.32];
     S.exposure = 1.0 + (1 - day) * 0.5;
     S.shadowDirty = true;
+    const e1 = document.getElementById('tval'); if (e1) e1.textContent = `${SUN.d}. ${SUN.mo + 1}. · ${fmtM(SUN.min)}`;
+    const e2 = document.getElementById('sunInfo'); if (e2) { const t = sunTimes(); e2.innerHTML = `Slunce: azimut <b>${Math.round(az)}°</b>, výška <b>${elD.toFixed(1)}°</b>${elD < 0 ? ' (pod obzorem)' : ''}<br>Východ <b>${fmtM(t.rise)}</b> · poledne <b>${fmtM(t.noon)}</b> (max ${t.maxEl.toFixed(0)}°) · západ <b>${fmtM(t.set)}</b>`; }
+    const tz = czOffset(SUN.y, SUN.mo, SUN.d, Math.floor(SUN.min / 60)); const e3 = document.getElementById('tzInfo'); if (e3) e3.textContent = tz === 2 ? 'letní čas (SELČ)' : 'zimní čas (SEČ)';
   }
-  setTime(10);
+  function setTime(h) { SUN.min = Math.round(h * 60); applySun(); }
+  applySun();
 
   // --- kolize ---
   const RAD = 0.2, STEP = 0.3, EYE = 1.68;   // oči člověka vysokého 180 cm
@@ -2288,9 +2337,24 @@ class Renderer {
   $('bLamp').onclick = toggleLamps;
   for (const id in OPT) { $(OPT[id].btn).onclick = () => setOpt(id, !OPT[id].on); setOpt(id, OPT[id].on); }
   $('bRooms').onclick = toggleMenu;
-  $('time').oninput = e => { setTime(+e.target.value); $('tval').textContent = fmtH(+e.target.value); };
+  // ---- panel slunce: datum, čas, předvolby, přehrávání dne ----
+  const pad2 = v => String(v).padStart(2, '0');
+  function syncSunUI() { $('time').value = SUN.min; $('sunTime').value = SUN.min; $('sunDate').value = `${SUN.y}-${pad2(SUN.mo + 1)}-${pad2(SUN.d)}`; applySun(); }
+  $('time').min = 0; $('time').max = 1435; $('time').step = 5;
+  $('time').oninput = e => { SUN.min = +e.target.value; syncSunUI(); };
+  $('sunTime').oninput = e => { SUN.min = +e.target.value; syncSunUI(); };
+  $('sunDate').onchange = e => { const v = e.target.value.split('-').map(Number); if (v.length === 3 && v[0]) { SUN.y = v[0]; SUN.mo = v[1] - 1; SUN.d = v[2]; syncSunUI(); } };
+  $('tval').onclick = () => $('sunPanel').classList.toggle('hide');
+  $('sunClose').onclick = () => $('sunPanel').classList.add('hide');
+  document.querySelectorAll('#sunPanel [data-day]').forEach(b => b.onclick = () => {
+    const [mo, d] = b.dataset.day.split('.').map(Number);
+    if (mo === 0) { const t = new Date(); SUN.mo = t.getMonth(); SUN.d = t.getDate(); SUN.y = t.getFullYear(); } else { SUN.mo = mo - 1; SUN.d = d; }
+    syncSunUI();
+  });
+  document.querySelectorAll('#sunPanel [data-min]').forEach(b => b.onclick = () => { SUN.min = +b.dataset.min; syncSunUI(); });
+  $('sunPlay').onclick = () => { SUN.play = !SUN.play; $('sunPlay').textContent = SUN.play ? '⏸ Zastavit' : '▶ Přehrát den'; if (SUN.play) { const t = sunTimes(); if (t.rise != null && (SUN.min < t.rise - 30 || SUN.min > t.set)) SUN.min = Math.max(0, t.rise - 30); } };
+  syncSunUI();
   const fmtH = h => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
-  $('tval').textContent = fmtH(hour);
   // ---- nastavení kvality ----
   const QL = {
     low: { name: 'Nízká', res: 0.6, shadow: 1024, soft: 1.0, ao: 0, xr: 0.7, desc: 'nejplynulejší, slabší telefony' },
@@ -2367,7 +2431,7 @@ class Renderer {
     mx.fillStyle = 'rgba(255,170,60,0.25)'; mx.beginPath(); mx.moveTo(0, 0); mx.arc(0, 0, 26, -Math.PI / 2 - 0.65, -Math.PI / 2 + 0.65); mx.fill();
     mx.fillStyle = '#ffab3d'; mx.beginPath(); mx.arc(0, 0, 4, 0, 7); mx.fill(); mx.restore();
     mx.fillStyle = 'rgba(255,255,255,0.75)'; mx.font = '600 11px system-ui'; mx.fillText(lvl ? 'PODKROVÍ' : '1. NP', 8, mm.height - 8);
-    mx.fillText('S ↑', mm.width - 30, 16);
+    { const cx = mm.width - 16, cy = 20, a = -SITE.rot * RAD_; mx.save(); mx.translate(cx, cy); mx.rotate(a); mx.strokeStyle = 'rgba(255,255,255,0.85)'; mx.lineWidth = 1.5; mx.beginPath(); mx.moveTo(0, 9); mx.lineTo(0, -9); mx.moveTo(-4, -4); mx.lineTo(0, -9); mx.lineTo(4, -4); mx.stroke(); mx.restore(); mx.fillText('S', cx - 18, cy + 4); }
   }
   mm.addEventListener('click', e => {
     const r = mm.getBoundingClientRect(), x = ((e.clientX - r.left) * mm.width / r.width - MM.ox) / MM.s, z = ((e.clientY - r.top) * mm.height / r.height - MM.oy) / MM.s;
@@ -2483,6 +2547,7 @@ class Renderer {
     const ey = P.feet + EYE;
     S.eye = [P.x, ey, P.z];
     S.target = [P.x + Math.sin(P.yaw) * Math.cos(P.pitch), ey + Math.sin(P.pitch), P.z - Math.cos(P.yaw) * Math.cos(P.pitch)];
+    if (SUN.play) { SUN.min = (SUN.min + dt * 40) % 1440; if (Math.floor(SUN.min / 5) !== Math.floor((SUN.min - dt * 40) / 5)) { $('time').value = SUN.min; $('sunTime').value = SUN.min; applySun(); } }
     stepWorld(dt, P.x, P.feet + EYE, P.z);
     R.render(S); tickFps(now);
     drawMini();
