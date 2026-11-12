@@ -54,6 +54,7 @@
   #start { background:var(--acc); color:#1a1307; border:0; font-weight:700; font-size:15px; padding:11px 20px; border-radius:10px; cursor:pointer; width:100%; }
   #help { position:fixed; left:12px; bottom:12px; max-width:280px; padding:10px 12px; font-size:12px; color:var(--muted); line-height:1.55; }
   #help b { color:var(--ink); font-weight:600; }
+  #flyCtl { position:fixed; right:14px; bottom:170px; display:flex; flex-direction:column; gap:10px; z-index:4; } #flyCtl .btn { width:58px; height:58px; font-size:22px; border-radius:50%; }
   #joy { position:fixed; width:100px; height:100px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:none; pointer-events:none; }
   #knob { position:absolute; left:30px; top:30px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.45); }
   #loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#101114; z-index:20; font-size:15px; color:var(--muted); }
@@ -70,6 +71,7 @@
   <button id="bRooms" class="btn">☰ Místnosti</button>
   <div id="timebox" class="panel">☀ <input id="time" type="range" min="0" max="1435" step="5" value="600"><span id="tval" title="Nastavit datum a čas">10:00</span></div>
   <button id="bLamp" class="btn">💡 Světla</button>
+  <button id="bFly" class="btn" title="Létací režim (F)">🕊 Létání</button>
   <button id="bGH" class="btn on">🌱 Skleník</button>
   <button id="bPool" class="btn on">🏊 Bazén</button>
   <button id="bQ" class="btn">⚙ Kvalita</button>
@@ -98,8 +100,9 @@
 <div id="menu" class="panel hide"><button id="menuClose" class="btn" style="width:auto;padding:4px 10px">✕</button><div id="menuList"></div></div>
 <canvas id="mini" width="118" height="162"></canvas>
 <div id="hint" class="panel">Klikněte do obrazu pro ovládání myší · Esc uvolní kurzor</div>
-<div id="help" class="panel desk-only"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>M</b> místnosti · <b>L</b> světla · <b>P</b> snímek · <b>G</b> skleník · <b>B</b> bazén · <b>H</b> skrýt nápovědu<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
+<div id="help" class="panel desk-only"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>F</b> létání (mezerník / E nahoru, Q / C dolů) · <b>M</b> místnosti · <b>L</b> světla · <b>P</b> snímek · <b>G</b> skleník · <b>B</b> bazén · <b>H</b> skrýt nápovědu<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
 <div id="joy"><div id="knob"></div></div>
+<div id="flyCtl" class="hide"><button id="flyUp" class="btn">▲</button><button id="flyDown" class="btn">▼</button></div>
 <div id="intro">
   <div class="card panel">
     <h1>Procházka domem</h1>
@@ -111,11 +114,12 @@
       <tr class="touch-only"><td>Pravý palec</td><td>rozhlížení</td></tr>
       <tr><td>☰ Místnosti</td><td>skok do kterékoli místnosti nebo ven</td></tr>
       <tr><td>☀ Slunce</td><td>skutečná poloha slunce podle data a času – klikněte na datum v liště</td></tr>
+      <tr><td>🕊 Létání</td><td>volný let kolem domu (F, mezerník nahoru, Q dolů)</td></tr>
       <tr><td>💡 Světla</td><td>rozsvícení svítidel (večer)</td></tr>
     </table>
     <button id="start">Vstoupit do domu</button>
     <button id="startVR" class="hide" style="margin-top:10px;width:100%;padding:11px 20px;border-radius:10px;border:1px solid var(--acc);background:none;color:var(--acc);font-weight:700;font-size:15px;cursor:pointer">🥽 Vstoupit ve VR brýlích</button>
-    <div id="vrHelp" class="sub" style="margin:12px 0 0">Ve VR: levá páčka chůze · pravá páčka otočení · tlačítko A / X další místnost</div>
+    <div id="vrHelp" class="sub" style="margin:12px 0 0">Ve VR: levá páčka chůze · pravá páčka otočení · A / X další místnost · B / Y menu s nastavením (datum, čas, světla, kvalita)</div>
   </div>
 </div>
 <div id="loading">Stavím dům…</div>
@@ -367,6 +371,8 @@ const MATS = {
   granite: { color: '#ffffff', tex: 'granite', ts: 1.0, rough: 0.8, spec: 0.08 },
   boulder: { color: '#8f8b84', tex: 'concrete', ts: 1.2, rough: 1, spec: 0.03 },
   gutter: { color: '#141517', rough: 0.4, spec: 0.35 },
+  vrPanel: { color: '#ffffff', tex: 'vrPanel', unlit: true, overlay: true, cast: false },
+  laser: { color: '#00d2be', emis: 1, rough: 1, spec: 0, cast: false, overlay: true },
   teal: { color: '#00a19c', rough: 0.4, spec: 0.3 },
   ledTeal: { color: '#00d2be', emis: 1, rough: 1, spec: 0 },
   silver: { color: '#c4c8cc', rough: 0.25, spec: 0.7 },
@@ -1805,7 +1811,7 @@ precision highp float; precision highp sampler2DShadow;
 in vec3 vW; in vec3 vN; in vec2 vU; layout(location=0) out vec4 o; layout(location=1) out vec4 oD;
 uniform mat4 uView;
 vec3 pk(float v){ v=clamp(v,0.,.99999)*255.; float r=floor(v); v=(v-r)*255.; float g=floor(v); float b=floor((v-g)*255.); return vec3(r,g,b)/255.; }
-uniform vec3 uColor, uEmis; uniform sampler2D uTex; uniform float uHasTex, uOpacity, uRough, uSpec;
+uniform vec3 uColor, uEmis; uniform sampler2D uTex; uniform float uUnlit, uHasTex, uOpacity, uRough, uSpec;
 uniform vec3 uSunDir, uSunCol, uSkyCol, uGndCol, uInAmb, uCam, uFogCol, uLampCol;
 uniform sampler2DShadow uShadow; uniform mat4 uSVP; uniform float uSoft, uSTex, uExposure, uFogDen, uLampsOn;
 uniform int uNR; uniform vec3 uRMin[26]; uniform vec3 uRMax[26]; uniform int uRG[26];
@@ -1853,7 +1859,7 @@ void main(){
   col += uEmis*3.0*(uLampsOn>.5?1.6:0.6);
   col = aces(col*uExposure); col = pow(col, vec3(1./2.2));
   float a = uOpacity<.99 ? clamp(uOpacity + pow(1.-max(dot(n,V),0.),3.)*.5,0.,1.) : 1.;
-  o = vec4(col, a); oD = vec4(pk(-(uView*vec4(vW,1.)).z/200.),1.);
+  o = vec4(col, a); if(uUnlit>.5) o = vec4(pow(alb, vec3(1./2.2)), 1.); oD = vec4(pk(-(uView*vec4(vW,1.)).z/200.),1.);
 }`;
 const VS_FULL = `#version 300 es
 out vec2 vUV; void main(){ vec2 p=vec2((gl_VertexID<<1)&2, gl_VertexID&2); vUV=p; gl_Position=vec4(p*2.-1.,0.,1.); }`;
@@ -1940,6 +1946,7 @@ class Renderer {
     if (this.aniso) gl.texParameterf(gl.TEXTURE_2D, this.aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(this.aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
     this.textures[name] = t;
   }
+  updTex(name, canvas) { const gl = this.gl; gl.bindTexture(gl.TEXTURE_2D, this.textures[name]); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas); gl.generateMipmap(gl.TEXTURE_2D); }
   mesh(p, n, u) {
     const gl = this.gl, vao = gl.createVertexArray(); gl.bindVertexArray(vao);
     for (const [i, arr, sz] of [[0, p, 3], [1, n, 3], [2, u, 2]]) { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW); gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, sz, gl.FLOAT, false, 0, 0); }
@@ -1993,7 +2000,7 @@ class Renderer {
     if (prog === this.prog) {
       const m = b.mat;
       gl.uniform3fv(u.uColor, b.col); gl.uniform3fv(u.uEmis, m.emis ? b.col : [0, 0, 0]);
-      gl.uniform1f(u.uOpacity, m.op || 1); gl.uniform1f(u.uRough, m.rough ?? 0.6); gl.uniform1f(u.uSpec, m.spec ?? 0.1);
+      gl.uniform1f(u.uOpacity, m.op || 1); gl.uniform1f(u.uUnlit, m.unlit ? 1 : 0); gl.uniform1f(u.uRough, m.rough ?? 0.6); gl.uniform1f(u.uSpec, m.spec ?? 0.1);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, m.tex ? this.textures[m.tex] : this.white); gl.uniform1f(u.uHasTex, m.tex ? 1 : 0);
     }
     gl.bindVertexArray(b.vao); gl.drawArrays(gl.TRIANGLES, 0, b.count);
@@ -2034,11 +2041,12 @@ class Renderer {
     gl.uniform1i(u.uNR, S.rooms.n); gl.uniform3fv(u.uRMin, S.rooms.min); gl.uniform3fv(u.uRMax, S.rooms.max); gl.uniform1iv(u.uRG, S.rooms.grp);
     gl.uniform1i(u.uNL, S.lamps.n); gl.uniform4fv(u.uLP, S.lamps.p);
     gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
-    for (const b of all) if (!b.transparent) this.draw(b, p);
+    for (const b of all) if (!b.transparent && !b.mat.overlay) this.draw(b, p);
     if (mrt) gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.NONE]);
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
     for (const b of all) if (b.transparent) this.draw(b, p);
     gl.disable(gl.BLEND); gl.depthMask(true);
+    if (all.some(b => b.mat.overlay)) { gl.disable(gl.DEPTH_TEST); for (const b of all) if (b.mat.overlay) this.draw(b, p); gl.enable(gl.DEPTH_TEST); }
     if (mrt) gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
   }
   // VR: views = [{vp:[x,y,w,h], P, V, eye}]
@@ -2295,7 +2303,20 @@ class Renderer {
   // --- ovládání ---
   const keys = {};
   let started = false, locked = false, drag = null;
-  addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'KeyL') toggleLamps(); if (e.code === 'KeyM') toggleMenu(); if (e.code === 'KeyH') $('help').classList.toggle('hide'); if (e.code === 'KeyP') $('bShot').click(); if (e.code === 'KeyG') setOpt('gh', !OPT.gh.on); if (e.code === 'KeyB') setOpt('pool', !OPT.pool.on); });
+  // ---- LÉTACÍ REŽIM ----
+  let FLY = false;
+  function toggleFly() {
+    FLY = !FLY; P.vy = 0;
+    const b = document.getElementById('bFly'); if (b) { b.classList.toggle('on', FLY); b.textContent = FLY ? '🕊 Létání: zap' : '🕊 Létání'; }
+    const fc = document.getElementById('flyCtl'); if (fc) fc.classList.toggle('hide', !(FLY && matchMedia('(pointer:coarse)').matches));
+    if (!FLY && typeof VRM !== 'undefined') VRM.dirty = true;
+  }
+  function flyMove(dx, dy, dz) {   // volný pohyb bez kolizí, nad terénem, max 60 m
+    P.x = Math.max(-60, Math.min(70, P.x + dx)); P.z = Math.max(-50, Math.min(70, P.z + dz));
+    P.feet = Math.max(terrainH(P.x, P.z), Math.min(60, P.feet + dy));
+  }
+  const flyHold = { up: false, down: false };
+  addEventListener('keydown', e => { keys[e.code] = true; if (FLY && (e.code === 'Space' || e.code === 'ControlLeft')) e.preventDefault(); if (e.code === 'KeyF') toggleFly(); if (e.code === 'KeyL') toggleLamps(); if (e.code === 'KeyM') toggleMenu(); if (e.code === 'KeyH') $('help').classList.toggle('hide'); if (e.code === 'KeyP') $('bShot').click(); if (e.code === 'KeyG') setOpt('gh', !OPT.gh.on); if (e.code === 'KeyB') setOpt('pool', !OPT.pool.on); });
   addEventListener('keyup', e => { keys[e.code] = false; });
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
   const look = (dx, dy, k = 0.0024) => { P.yaw += dx * k; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch - dy * k)); };
@@ -2335,6 +2356,9 @@ class Renderer {
   function toggleLamps() { S.lampsOn = !S.lampsOn; $('bLamp').classList.toggle('on', S.lampsOn); }
   function toggleMenu() { $('menu').classList.toggle('hide'); }
   $('bLamp').onclick = toggleLamps;
+  $('bFly').onclick = toggleFly;
+  for (const [id, k] of [['flyUp', 'up'], ['flyDown', 'down']]) { const el = $(id); const on = e => { flyHold[k] = true; e.preventDefault(); }, off = () => { flyHold[k] = false; };
+    el.addEventListener('touchstart', on, { passive: false }); el.addEventListener('touchend', off); el.addEventListener('touchcancel', off); el.addEventListener('mousedown', on); el.addEventListener('mouseup', off); el.addEventListener('mouseleave', off); }
   for (const id in OPT) { $(OPT[id].btn).onclick = () => setOpt(id, !OPT[id].on); setOpt(id, OPT[id].on); }
   $('bRooms').onclick = toggleMenu;
   // ---- panel slunce: datum, čas, předvolby, přehrávání dne ----
@@ -2467,9 +2491,110 @@ class Renderer {
       s.updateRenderState({ baseLayer: new XRWebGLLayer(s, R.gl, { framebufferScaleFactor: QS.xr, antialias: true }), depthNear: 0.05, depthFar: 400 });
       try { xrRef = await s.requestReferenceSpace('local-floor'); xrFloor = true; } catch (_) { xrRef = await s.requestReferenceSpace('local'); xrFloor = false; }
       xrSession = s; $('bVR').textContent = '🥽 Ukončit VR';
-      s.addEventListener('end', () => { xrSession = null; $('bVR').textContent = '🥽 VR'; S.shadowDirty = true; last = performance.now(); requestAnimationFrame(frame); });
+      s.addEventListener('end', () => { closeVRMenu(); xrSession = null; $('bVR').textContent = '🥽 VR'; S.shadowDirty = true; last = performance.now(); requestAnimationFrame(frame); });
       xrLast = performance.now(); s.requestAnimationFrame(xrFrame);
     } catch (e) { $('room').textContent = 'VR se nepodařilo spustit'; }
+  }
+  // ---------- VR MENU (plovoucí panel s nastavením) ----------
+  const VRM = { open: false, dirty: true, hover: -1, trigLatch: false, btnLatch: false, wantOpen: false, w: 1.0, h: 0.66, C: [0, 0, 0], ang: 0, buttons: [] };
+  const vrc = document.createElement('canvas'); vrc.width = 1024; vrc.height = 676; const vx = vrc.getContext('2d');
+  R.tex('vrPanel', vrc);
+  for (const k in GEO) delete GEO[k];
+  quadUV('vrPanel', [-0.5, -0.33, 0], [0.5, -0.33, 0], [0.5, 0.33, 0], [-0.5, 0.33, 0]);
+  const vrPanelB = R.addBatch('vrPanel', GEO.vrPanel); vrPanelB.cast = false; vrPanelB.hidden = true; R.dyn.push(vrPanelB);
+  for (const k in GEO) delete GEO[k];
+  box('laser', -0.002, -0.002, -1, 0.002, 0.002, 0, { c: false });
+  const laserB = R.addBatch('laser', GEO.laser); laserB.cast = false; laserB.hidden = true; R.dyn.push(laserB);
+  for (const k in GEO) delete GEO[k];
+  function vrButtons() {
+    const B = [], t = new Date(), add = (x, y, w, h, label, fn, on) => B.push({ x, y, w, h, label, fn, on });
+    const shiftDay = n => { const d = new Date(Date.UTC(SUN.y, SUN.mo, SUN.d + n)); SUN.y = d.getUTCFullYear(); SUN.mo = d.getUTCMonth(); SUN.d = d.getUTCDate(); syncSunUI(); };
+    const shiftMonth = n => { const d = new Date(Date.UTC(SUN.y, SUN.mo + n, 1)); const dim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); SUN.y = d.getUTCFullYear(); SUN.mo = d.getUTCMonth(); SUN.d = Math.min(SUN.d, dim); syncSunUI(); };
+    const setDay = (mo, d) => { SUN.mo = mo; SUN.d = d; syncSunUI(); };
+    add(30, 100, 110, 64, '◀ den', () => shiftDay(-1)); add(150, 100, 110, 64, 'den ▶', () => shiftDay(1));
+    add(280, 100, 130, 64, '◀ měsíc', () => shiftMonth(-1)); add(420, 100, 130, 64, 'měsíc ▶', () => shiftMonth(1));
+    add(570, 100, 100, 64, 'Dnes', () => { SUN.y = t.getFullYear(); SUN.mo = t.getMonth(); SUN.d = t.getDate(); syncSunUI(); });
+    add(680, 100, 100, 64, '20. 3.', () => setDay(2, 20)); add(790, 100, 100, 64, '21. 6.', () => setDay(5, 21)); add(900, 100, 100, 64, '21. 12.', () => setDay(11, 21));
+    B.push({ x: 30, y: 230, w: 964, h: 56, slider: true, fn: u => { SUN.min = Math.round(u * 1435 / 5) * 5; syncSunUI(); } });
+    add(30, 300, 150, 64, '− 1 h', () => { SUN.min = Math.max(0, SUN.min - 60); syncSunUI(); });
+    add(190, 300, 150, 64, '+ 1 h', () => { SUN.min = Math.min(1435, SUN.min + 60); syncSunUI(); });
+    add(350, 300, 120, 64, '8:00', () => { SUN.min = 480; syncSunUI(); }); add(480, 300, 120, 64, '12:00', () => { SUN.min = 720; syncSunUI(); });
+    add(610, 300, 120, 64, '16:00', () => { SUN.min = 960; syncSunUI(); });
+    add(740, 300, 254, 64, SUN.play ? '⏸ Zastavit' : '▶ Přehrát den', () => $('sunPlay').click(), SUN.play);
+    add(30, 420, 180, 64, '💡 Světla', () => toggleLamps(), S.lampsOn);
+    add(222, 420, 180, 64, '🌱 Skleník', () => setOpt('gh', !OPT.gh.on), OPT.gh.on);
+    add(414, 420, 180, 64, '🏊 Bazén', () => setOpt('pool', !OPT.pool.on), OPT.pool.on);
+    add(606, 420, 180, 64, '🕊 Létání', () => toggleFly(), FLY);
+    add(798, 420, 196, 64, '➜ Místnost', () => { xrRoomIdx = (xrRoomIdx + 1) % xrRooms.length; const r = xrRooms[xrRoomIdx]; teleport(r[0], r[1], r[2], r[3]); closeVRMenu(); });
+    const ql = [['low', 'Nízká'], ['mid', 'Střední'], ['high', 'Vysoká']];
+    ql.forEach(([k, n], i) => add(200 + i * 200, 520, 190, 64, n, () => { qKey = k; Object.assign(QS, QL[k]); applyQ(true); if (xrSession) try { xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, R.gl, { framebufferScaleFactor: QS.xr, antialias: true }) }); } catch (_) { } }, qKey === k));
+    add(820, 520, 174, 64, '✕ Zavřít', () => closeVRMenu());
+    return B;
+  }
+  function drawVRMenu() {
+    const W = vrc.width, H = vrc.height; VRM.buttons = vrButtons();
+    vx.clearRect(0, 0, W, H); vx.fillStyle = '#16181c'; vx.fillRect(0, 0, W, H);
+    vx.strokeStyle = '#ffab3d'; vx.lineWidth = 4; vx.strokeRect(2, 2, W - 4, H - 4);
+    vx.fillStyle = '#f4f3ef'; vx.font = '700 40px system-ui, sans-serif'; vx.textBaseline = 'middle';
+    vx.fillText('Nastavení', 30, 46);
+    vx.font = '600 34px system-ui, sans-serif'; vx.fillStyle = '#ffab3d'; vx.textAlign = 'right';
+    vx.fillText(`${SUN.d}. ${SUN.mo + 1}. ${SUN.y} · ${fmtM(SUN.min)}`, W - 30, 46); vx.textAlign = 'left';
+    const { az, el } = sunPos(utcMs(SUN.min)), st = sunTimes();
+    vx.font = '26px system-ui, sans-serif'; vx.fillStyle = '#b9bcc2';
+    vx.fillText(`Slunce: azimut ${Math.round(az)}°, výška ${el.toFixed(0)}°  ·  východ ${fmtM(st.rise)}  ·  západ ${fmtM(st.set)}`, 30, 396);
+    vx.fillText('Kvalita', 30, 552); vx.fillText('Datum', 30, 82); vx.fillText('Čas', 30, 206);
+    vx.font = '22px system-ui, sans-serif'; vx.fillText('Spoušť = klik · B/Y = zavřít menu · A/X = další místnost · při létání pravá páčka nahoru/dolů', 30, 640);
+    VRM.buttons.forEach((b, i) => {
+      if (b.slider) {
+        const u = SUN.min / 1435;
+        vx.fillStyle = '#2a2d33'; vx.fillRect(b.x, b.y + 20, b.w, 16);
+        vx.fillStyle = '#ffab3d'; vx.fillRect(b.x, b.y + 20, b.w * u, 16);
+        vx.beginPath(); vx.arc(b.x + b.w * u, b.y + 28, 22, 0, 7); vx.fill();
+        vx.fillStyle = '#b9bcc2'; vx.font = '20px system-ui'; for (let h = 0; h <= 24; h += 3) vx.fillText(String(h), b.x + b.w * h / 24 - 8, b.y + 62);
+        return;
+      }
+      vx.fillStyle = b.on ? '#ffab3d' : (i === VRM.hover ? '#3a3e46' : '#262930');
+      vx.beginPath(); vx.roundRect ? vx.roundRect(b.x, b.y, b.w, b.h, 12) : vx.rect(b.x, b.y, b.w, b.h); vx.fill();
+      if (i === VRM.hover) { vx.strokeStyle = '#f4f3ef'; vx.lineWidth = 3; vx.stroke(); }
+      vx.fillStyle = b.on ? '#1a1307' : '#f4f3ef'; vx.font = '600 28px system-ui, sans-serif'; vx.textAlign = 'center';
+      vx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2 + 2); vx.textAlign = 'left';
+    });
+    R.updTex('vrPanel', vrc); VRM.dirty = false;
+  }
+  function openVRMenu(headW) {
+    let fx = -headW[8], fz = -headW[10]; const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
+    VRM.C = [headW[12] + fx * 0.75, headW[13] - 0.25, headW[14] + fz * 0.75];
+    VRM.ang = Math.atan2(-fx, -fz);   // normála panelu míří k hlavě
+    vrPanelB.model = M4.model(VRM.C[0], VRM.C[1], VRM.C[2], VRM.ang);
+    VRM.open = true; VRM.dirty = true; vrPanelB.hidden = false;
+  }
+  function closeVRMenu() { VRM.open = false; vrPanelB.hidden = true; laserB.hidden = true; }
+  function vrMenuStep(rayW, trig, sess) {
+    if (!VRM.open) { laserB.hidden = true; VRM.trigLatch = trig; return; }
+    let hover = -1, dist = 2.5, u = 0, v = 0;
+    if (rayW) {
+      const o = [rayW[12], rayW[13], rayW[14]], d = [-rayW[8], -rayW[9], -rayW[10]];
+      const c = Math.cos(VRM.ang), sn = Math.sin(VRM.ang), N = [sn, 0, c], Rt = [c, 0, -sn];
+      const den = d[0] * N[0] + d[1] * N[1] + d[2] * N[2];
+      if (Math.abs(den) > 1e-4) {
+        const tt = ((VRM.C[0] - o[0]) * N[0] + (VRM.C[1] - o[1]) * N[1] + (VRM.C[2] - o[2]) * N[2]) / den;
+        if (tt > 0 && tt < 5) {
+          const hp = [o[0] + d[0] * tt - VRM.C[0], o[1] + d[1] * tt - VRM.C[1], o[2] + d[2] * tt - VRM.C[2]];
+          const lx = hp[0] * Rt[0] + hp[2] * Rt[2], ly = hp[1];
+          if (Math.abs(lx) <= 0.5 && Math.abs(ly) <= 0.33) {
+            dist = tt; u = (lx + 0.5) * vrc.width; v = (0.33 - ly) / 0.66 * vrc.height;
+            hover = VRM.buttons.findIndex(b => u >= b.x && u <= b.x + b.w && v >= b.y && v <= b.y + b.h);
+          }
+        }
+      }
+      const sc = new Float32Array(rayW); for (let i = 8; i < 11; i++) sc[i] *= dist;
+      laserB.model = sc; laserB.hidden = false;
+    }
+    if (hover !== VRM.hover) { VRM.hover = hover; VRM.dirty = true; }
+    if (trig && !VRM.trigLatch && hover >= 0) { const b = VRM.buttons[hover]; if (b.slider) b.fn((u - b.x) / b.w); else b.fn(); VRM.dirty = true; }
+    else if (trig && hover >= 0 && VRM.buttons[hover].slider) { const b = VRM.buttons[hover]; b.fn((u - b.x) / b.w); VRM.dirty = true; }
+    VRM.trigLatch = trig;
+    if (VRM.dirty) drawVRMenu();
   }
   function xrFrame(t, xf) {
     const sess = xf.session; sess.requestAnimationFrame(xrFrame);
@@ -2477,26 +2602,41 @@ class Renderer {
     const dt = Math.min(0.05, (t - xrLast) / 1000 || 0.016); xrLast = t;
     const yOff = xrFloor ? 0 : EYE;
     const player = () => M4.model(P.x, P.feet + yOff, P.z, -P.yaw);
-    // ovladače: levá páčka chůze, pravá páčka otáčení po 30°, tlačítko A/X = další místnost
-    let mx = 0, my = 0, turn = 0, btn = false;
+    // ovladače: levá páčka chůze, pravá páčka otáčení po 30°, A/X = další místnost, B/Y = menu, spoušť = klik v menu
+    let mx = 0, my = 0, turn = 0, rightY = 0, btn = false, menuBtn = false, trig = false, raySrc = null;
     for (const src of sess.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
       const ax = gp.axes, x = ax.length >= 4 ? ax[2] : (ax[0] || 0), y = ax.length >= 4 ? ax[3] : (ax[1] || 0);
-      if (src.handedness === 'right') { turn = x; if (gp.buttons[4] && gp.buttons[4].pressed) btn = true; }
-      else { mx = x; my = y; if (gp.buttons[4] && gp.buttons[4].pressed) btn = true; }
+      const pr = i => gp.buttons[i] && gp.buttons[i].pressed;
+      if (src.handedness === 'right') { turn = x; rightY = y; if (pr(4)) btn = true; raySrc = src; if (pr(0)) trig = true; }
+      else { mx = x; my = y; if (pr(4)) btn = true; if (!raySrc) raySrc = src; if (pr(0) && raySrc === src) trig = true; }
+      if (pr(5)) menuBtn = true;
     }
-    if (Math.abs(turn) > 0.7 && !xrTurnLatch) { P.yaw += Math.sign(turn) * Math.PI / 6; xrTurnLatch = true; }
+    if (menuBtn && !VRM.btnLatch) VRM.open ? closeVRMenu() : (VRM.wantOpen = true);
+    VRM.btnLatch = menuBtn;
+    if (VRM.open) { mx = my = 0; btn = false; }
+    if (Math.abs(turn) > 0.7 && !xrTurnLatch && !VRM.open) { P.yaw += Math.sign(turn) * Math.PI / 6; xrTurnLatch = true; }
     if (Math.abs(turn) < 0.3) xrTurnLatch = false;
     if (btn && !xrBtnLatch) { xrRoomIdx = (xrRoomIdx + 1) % xrRooms.length; const r = xrRooms[xrRoomIdx]; teleport(r[0], r[1], r[2], r[3]); }
     xrBtnLatch = btn;
     let W = M4.mul(player(), pose.transform.matrix);
-    if (Math.abs(mx) > 0.15 || Math.abs(my) > 0.15) {
+    if (FLY && !VRM.open) {   // létání ve VR: levá páčka vodorovně ve směru pohledu, pravá páčka nahoru/dolů
+      let fx = -W[8], fz = -W[10]; const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
+      const sp = 4 * dt, up = Math.abs(rightY) > 0.2 ? -rightY : 0;
+      if (Math.abs(mx) > 0.15 || Math.abs(my) > 0.15 || up) { flyMove((fx * -my + -fz * mx) * sp, up * sp, (fz * -my + fx * mx) * sp); W = M4.mul(player(), pose.transform.matrix); }
+    } else if (Math.abs(mx) > 0.15 || Math.abs(my) > 0.15) {
       let fx = -W[8], fz = -W[10]; const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
       const rx = -fz, rz = fx, sp = 1.5 * dt;
       moveTo(P.x + (fx * -my + rx * mx) * sp, P.z + (fz * -my + rz * mx) * sp);
       W = M4.mul(player(), pose.transform.matrix);
     }
     stepWorld(dt, W[12], W[13], W[14]);
+    if (SUN.play) { const o = SUN.min; SUN.min = (SUN.min + dt * 40) % 1440; if (Math.floor(SUN.min / 5) !== Math.floor(o / 5)) { applySun(); VRM.dirty = true; } }
+    // menu: otevřít před hlavou, paprsek z ovladače, klik spouští
+    if (VRM.wantOpen) { VRM.wantOpen = false; openVRMenu(W); }
+    let rayW = null;
+    if (raySrc && raySrc.targetRaySpace && xf.getPose) { const rp = xf.getPose(raySrc.targetRaySpace, xrRef); if (rp) rayW = M4.mul(player(), rp.transform.matrix); }
+    vrMenuStep(rayW, trig, sess);
     const pinv = M4.inv(player()), layer = sess.renderState.baseLayer, views = [];
     for (const v of pose.views) {
       const vp = layer.getViewport(v), Wv = M4.mul(player(), v.transform.matrix);
@@ -2506,8 +2646,9 @@ class Renderer {
   }
   // společná logika světa: gravitace, dveře, popisek místnosti (hx,hy,hz = poloha hlavy)
   function stepWorld(dt, hx, hy, hz) {
-    const gnd = groundAt(P.x, P.z, P.feet);
-    if (gnd > P.feet) P.feet = Math.min(gnd, P.feet + dt * 2.6), P.vy = 0;
+    const gnd = FLY ? P.feet : groundAt(P.x, P.z, P.feet);
+    if (FLY) { P.vy = 0; }
+    else if (gnd > P.feet) P.feet = Math.min(gnd, P.feet + dt * 2.6), P.vy = 0;
     else if (gnd < P.feet - 0.001) { P.vy -= 9.8 * dt; P.feet = Math.max(gnd, P.feet + P.vy * dt); if (P.feet === gnd) P.vy = 0; }
     for (const o of gateList) {
       const near = Math.hypot(hx - o.cx, hz - o.cz) < (o.gt.t === 'G' ? 3.2 : 2.0);
@@ -2538,7 +2679,12 @@ class Renderer {
     if (keys.ArrowLeft) P.yaw -= 1.8 * dt; if (keys.ArrowRight) P.yaw += 1.8 * dt;
     if (joy.id !== null) { f -= joy.dy; s += joy.dx; }
     const sp = (keys.ShiftLeft || keys.ShiftRight ? 3.2 : 1.6) * dt;
-    if (f || s) {
+    if (FLY) {
+      const fsp = (keys.ShiftLeft || keys.ShiftRight ? 12 : 4) * dt;
+      let up = 0; if (keys.Space || keys.KeyE || flyHold.up) up += 1; if (keys.KeyQ || keys.KeyC || keys.ControlLeft || flyHold.down) up -= 1;
+      const cp = Math.cos(P.pitch), fx = Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+      if (f || s || up) flyMove((fx * cp * f - fz * s) * fsp, (Math.sin(P.pitch) * f + up) * fsp, (fz * cp * f + fx * s) * fsp);
+    } else if (f || s) {
       const l = Math.max(1, Math.hypot(f, s)); f /= l; s /= l;
       const fx = Math.sin(P.yaw), fz = -Math.cos(P.yaw);
       moveTo(P.x + (fx * f - fz * s) * sp, P.z + (fz * f + fx * s) * sp);
@@ -2554,7 +2700,7 @@ class Renderer {
     requestAnimationFrame(frame);
   }
   teleport(9.2, 4.6, 300, 0);
-  window.__walk = { _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
+  window.__walk = { toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
   requestAnimationFrame(frame);
   setupVR();
   $('loading').classList.add('hide');
