@@ -258,7 +258,7 @@ const VIEWS = [
   ['Venku – vjezd a vstup (JZ)', [-4.5, 21.0, 20], 0],
   ['Venku – terasa', [13.5, 6.5, 330], 0],
   ['Venku – bazén', [18.9, 13.8, 330], 0],
-  ['Venku – skleník', [19.6, 0.4, 85], 0],
+  ['Venku – skleník', [-3.2, -1.1, 270], 0],
   ['Ulice – pohled na dům', [8.0, 27.0, 352], 0],
   ['Ulice – roh (JV)', [31.0, 27.0, 310], 0],
   ['Ulice východ – pohled do obýváku', [31.4, 5.5, 270], 0],
@@ -289,12 +289,12 @@ const POOL = { x0: 13.85, x1: 16.85, z0: 5.25, z1: 11.75, depth: 1.4 };   // van
 const POOL_DECK = { x0: 10.26, x1: 19.5, z0: 4.25, z1: 12.6 };            // dřevěná terasa kolem (část je dlažba u domu)
 const inPoolDeck = (x, z) => x > POOL_DECK.x0 && x < POOL_DECK.x1 + 0.6 && z > POOL_DECK.z0 - 0.3 && z < POOL_DECK.z1 + 0.6;
 // SKLENÍK (doplněno na přání) v SV rohu pozemku: 4,0 × 2,5 m, dveře ve štítu na západ
-const GH = { x0: 21.2, x1: 25.2, z0: -1.55, z1: 0.95 };
+const GH = { x0: -9.1, x1: -5.1, z0: -2.4, z1: 0.1, door: 'e' };   // SZ roh pozemku za zahradním skladem, dveře na východ
 const inGH = (x, z, m = 0) => x > GH.x0 - m && x < GH.x1 + m && z > GH.z0 - m && z < GH.z1 + m;
 function terrainH(x, z) {
   if (!inPoly(x, z, PLOT)) return outsideH(x, z);
   if (inPoolDeck(x, z)) return 0.0;
-  if (inGH(x, z, 0.5)) return 0.0;
+  if (inGH(x, z, 0.5)) return -0.10;
   if (inPoly(x, z, PAVE_HOUSE)) return -0.03;
   // západ dle pohledu ZÁPAD: přístřešek 374,48, okolí skladu 374,40, od jižního konce spád k bráně 373,83
   if (inPoly(x, z, PAVE_WEST)) { const base = x > -3.9 ? -0.03 : -0.10; return z < 16.5 ? base : base + (-0.67 - base) * Math.min(1, (z - 16.5) / 6.1); }
@@ -1342,13 +1342,13 @@ function buildGreenhouse() {
   }
   // štíty (východní plný sklo, západní s dveřmi 0,8 m)
   for (const x of [x0, x1]) {
-    const door = x === x0;
+    const door = x === (GH.door === 'e' ? x1 : x0), sg = x === x0 ? -1 : 1;
     const pts = [[z0, eave], [zc, ridge], [z1, eave]];
     prism('ghGlass', 'z', [[z0, eave], [z1, eave], [zc, ridge]], x - 0.004, x + 0.004, false);
     if (door) { box('ghGlass', x - 0.004, 0.18, z0, x + 0.004, eave, zc - 0.42); box('ghGlass', x - 0.004, 0.18, zc + 0.42, x + 0.004, eave, z1); box('ghGlass', x - 0.004, 2.05, zc - 0.42, x + 0.004, eave, zc + 0.42, { c: false });
       for (const zz of [zc - 0.42, zc + 0.42]) box('alu', x - f / 2, 0, zz - f / 2, x + f / 2, 2.05, zz + f / 2, { c: false });
       box('alu', x - f / 2, 2.03, zc - 0.42, x + f / 2, 2.07, zc + 0.42, { c: false });
-      box('ghGlass', x - 0.30, 0.02, zc + 0.40, x - 0.29, 2.02, zc + 1.20, { c: false }); }   // posuvné křídlo odsunuté
+      box('ghGlass', x + sg * 0.29, 0.02, zc + 0.40, x + sg * 0.30, 2.02, zc + 1.20, { c: false }); }   // posuvné křídlo odsunuté
     else box('ghGlass', x - 0.004, 0.18, z0, x + 0.004, eave, z1);
     for (const zz of [z0, z0 + (z1 - z0) / 3, z1 - (z1 - z0) / 3, z1]) if (!door || Math.abs(zz - zc) > 0.5) box('alu', x - f / 2, 0, zz - f / 2, x + f / 2, Math.min(eave + (ridge - eave) * (1 - Math.abs(zz - zc) / (zc - z0)), ridge), zz + f / 2, { c: false });
   }
@@ -1362,21 +1362,23 @@ function buildGreenhouse() {
   for (const z of [z0 - 0.07, z1 + 0.02]) box('gutter', x0 - 0.05, eave - 0.07, z, x1 + 0.05, eave, z + 0.05, { c: false });
   // vnitřek: vyvýšené záhony podél stěn + ulička, police
   box('gravel', x0 + 0.05, 0.0, z0 + 0.05, x1 - 0.05, 0.02, z1 - 0.05, { c: false });
+  const bx0 = GH.door === 'e' ? x0 + 0.08 : x0 + 0.45, bx1 = GH.door === 'e' ? x1 - 0.45 : x1 - 0.08;   // u dveří volno
   for (const [za, zb] of [[z0 + 0.06, z0 + 0.86], [z1 - 0.86, z1 - 0.06]]) {
-    box('timber', x0 + 0.45, 0, za, x1 - 0.08, 0.55, zb, { c: false });
-    box('soil', x0 + 0.48, 0.55, za + 0.03, x1 - 0.11, 0.57, zb - 0.03, { c: false });
+    box('timber', bx0, 0, za, bx1, 0.55, zb, { c: false });
+    box('soil', bx0 + 0.03, 0.55, za + 0.03, bx1 - 0.03, 0.57, zb - 0.03, { c: false });
     const R = rng(Math.round(za * 100) + 999);
-    for (let x = x0 + 0.65; x < x1 - 0.2; x += 0.42) {                    // rajčata/zelenina
+    for (let x = bx0 + 0.2; x < bx1 - 0.15; x += 0.42) {                    // rajčata/zelenina
       const cz = (za + zb) / 2 + (R() - 0.5) * 0.25, h = 0.35 + R() * 0.45;
       sphere(R() < 0.5 ? 'leaf' : 'leafDark', x, 0.57 + h / 2, cz, 0.16, h / 2, 0.16, 6);
       if (R() < 0.45) for (let k = 0; k < 3; k++) sphere('artRed', x + (R() - 0.5) * 0.2, 0.62 + R() * h * 0.8, cz + (R() - 0.5) * 0.2, 0.035, 0.035, 0.035, 5);
       cyl('alu', x, cz + 0.12, 0.008, 0.57, 0.57 + h + 0.35, 4, false);
     }
-    COLL.push([x0 + 0.45, 0, za, x1 - 0.08, 0.6, zb]);
+    COLL.push([bx0, 0, za, bx1, 0.6, zb]);
   }
   // kolize stěn (dveře na západě volné)
-  COLL.push([x0, 0, z0 - 0.04, x1, 2.6, z0 + 0.04], [x0, 0, z1 - 0.04, x1, 2.6, z1 + 0.04], [x1 - 0.04, 0, z0, x1 + 0.04, 2.6, z1],
-    [x0 - 0.04, 0, z0, x0 + 0.04, 2.6, zc - 0.42], [x0 - 0.04, 0, zc + 0.42, x0 + 0.04, 2.6, z1]);
+  const xd = GH.door === 'e' ? x1 : x0, xs = GH.door === 'e' ? x0 : x1;
+  COLL.push([x0, 0, z0 - 0.04, x1, 2.6, z0 + 0.04], [x0, 0, z1 - 0.04, x1, 2.6, z1 + 0.04], [xs - 0.04, 0, z0, xs + 0.04, 2.6, z1],
+    [xd - 0.04, 0, z0, xd + 0.04, 2.6, zc - 0.42], [xd - 0.04, 0, zc + 0.42, xd + 0.04, 2.6, z1]);
 }
 
 // ---------- 2.04 KOUPELNA RODIČŮ – design: béžový kámen + drážkované panely, černé baterie ----------
@@ -2101,8 +2103,8 @@ class Renderer {
   for (const k in GEO) R.batches.push(R.addBatch(k, GEO[k]));
   for (const k in GEO) delete GEO[k];
   // volitelné objekty jako samostatné skupiny (lze skrýt)
-  function group(fn) { const c0 = COLL.length; fn(); const coll = COLL.slice(c0), bs = []; for (const k in GEO) { const b = R.addBatch(k, GEO[k]); bs.push(b); R.batches.push(b); } for (const k in GEO) delete GEO[k]; return { bs, coll }; }
-  const OPT = { gh: { g: group(buildGreenhouse), btn: 'bGH', label: '🌱 Skleník', key: 'dum_gh' }, pool: { g: group(buildPool), off: group(buildPoolOff), btn: 'bPool', label: '🏊 Bazén', key: 'dum_pool' } };
+  function group(fn, dy = 0) { const c0 = COLL.length; fn(); const coll = COLL.slice(c0), bs = []; for (const c of coll) { c[1] += dy; c[4] += dy; } for (const k in GEO) { const b = R.addBatch(k, GEO[k]); if (dy) b.model = M4.model(0, dy, 0, 0); bs.push(b); R.batches.push(b); } for (const k in GEO) delete GEO[k]; return { bs, coll }; }
+  const OPT = { gh: { g: group(buildGreenhouse, -0.10), btn: 'bGH', label: '🌱 Skleník', key: 'dum_gh' }, pool: { g: group(buildPool), off: group(buildPoolOff), btn: 'bPool', label: '🏊 Bazén', key: 'dum_pool' } };
   function setOpt(id, on) {
     const o = OPT[id]; o.on = on;
     for (const b of o.g.bs) b.hidden = !on; for (const c of o.g.coll) c.off = !on;
