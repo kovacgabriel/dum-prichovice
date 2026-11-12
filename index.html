@@ -55,6 +55,7 @@
   #help { position:fixed; left:12px; bottom:12px; max-width:280px; padding:10px 12px; font-size:12px; color:var(--muted); line-height:1.55; }
   #help b { color:var(--ink); font-weight:600; }
   #flyCtl { position:fixed; right:14px; bottom:170px; display:flex; flex-direction:column; gap:10px; z-index:4; } #flyCtl .btn { width:58px; height:58px; font-size:22px; border-radius:50%; }
+  #act { position:fixed; left:50%; bottom:64px; transform:translateX(-50%); z-index:5; background:rgba(255,171,61,.92); color:#1a1307; font-weight:700; border:0; padding:10px 18px; }
   #joy { position:fixed; width:100px; height:100px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:none; pointer-events:none; }
   #knob { position:absolute; left:30px; top:30px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.45); }
   #loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#101114; z-index:20; font-size:15px; color:var(--muted); }
@@ -66,6 +67,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="cross"></div>
+<button id="act" class="btn hide"></button>
 <div id="top">
   <div id="room" class="panel">1.06 · Obývací pokoj</div>
   <button id="bRooms" class="btn">☰ Místnosti</button>
@@ -100,7 +102,7 @@
 <div id="menu" class="panel hide"><button id="menuClose" class="btn" style="width:auto;padding:4px 10px">✕</button><div id="menuList"></div></div>
 <canvas id="mini" width="118" height="162"></canvas>
 <div id="hint" class="panel">Klikněte do obrazu pro ovládání myší · Esc uvolní kurzor</div>
-<div id="help" class="panel desk-only"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>F</b> létání (mezerník / E nahoru, Q / C dolů) · <b>M</b> místnosti · <b>L</b> světla · <b>P</b> snímek · <b>G</b> skleník · <b>B</b> bazén · <b>H</b> skrýt nápovědu<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
+<div id="help" class="panel desk-only"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>F</b> létání (mezerník / E nahoru, Q / C dolů) · <b>M</b> místnosti · <b>L</b> světla · <b>R</b> otevřít / zavřít (lednice, trouba, bazén) · <b>P</b> snímek · <b>G</b> skleník · <b>B</b> bazén · <b>H</b> skrýt nápovědu<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
 <div id="joy"><div id="knob"></div></div>
 <div id="flyCtl" class="hide"><button id="flyUp" class="btn">▲</button><button id="flyDown" class="btn">▼</button></div>
 <div id="intro">
@@ -371,6 +373,25 @@ const MATS = {
   granite: { color: '#ffffff', tex: 'granite', ts: 1.0, rough: 0.8, spec: 0.08 },
   boulder: { color: '#8f8b84', tex: 'concrete', ts: 1.2, rough: 1, spec: 0.03 },
   gutter: { color: '#141517', rough: 0.4, spec: 0.35 },
+  fridgeIn: { color: '#f4f6f7', rough: 0.3, spec: 0.3 },
+  fridgeGlass: { color: '#dfeef2', op: 0.35, rough: 0.05, spec: 0.8, cast: false },
+  fridgeLight: { color: '#eef7ff', emis: 1, rough: 1, spec: 0 },
+  ovenIn: { color: '#202226', rough: 0.35, spec: 0.4 },
+  ovenLight: { color: '#ffcf8a', emis: 1, rough: 1, spec: 0 },
+  chicken: { color: '#c0782e', rough: 0.35, spec: 0.5 },
+  chickenDark: { color: '#8a4a1c', rough: 0.4, spec: 0.4 },
+  milk: { color: '#f5f5f2', rough: 0.6, spec: 0.1 },
+  cheese: { color: '#f2c94c', rough: 0.6, spec: 0.1 },
+  tomato: { color: '#d63a2c', rough: 0.3, spec: 0.5 },
+  lettuce: { color: '#7bb661', rough: 0.7, spec: 0.05 },
+  carrot: { color: '#ee8a2a', rough: 0.6, spec: 0.1 },
+  juice: { color: '#f5a623', op: 0.85, rough: 0.1, spec: 0.6 },
+  bottleGreen: { color: '#2f6b3a', op: 0.85, rough: 0.1, spec: 0.7 },
+  egg: { color: '#efe2cc', rough: 0.6, spec: 0.1 },
+  butter: { color: '#f7e08a', rough: 0.5, spec: 0.1 },
+  meat: { color: '#c4545a', rough: 0.5, spec: 0.2 },
+  yogurt: { color: '#e7eef9', rough: 0.5, spec: 0.1 },
+  ice: { color: '#d8eef7', op: 0.7, rough: 0.2, spec: 0.6 },
   vrPanel: { color: '#ffffff', tex: 'vrPanel', unlit: true, overlay: true, cast: false },
   laser: { color: '#00d2be', emis: 1, rough: 1, spec: 0, cast: false, overlay: true },
   teal: { color: '#00a19c', rough: 0.4, spec: 0.3 },
@@ -937,14 +958,17 @@ function buildFurniture() {
   for (const x of [5.40, 6.02, 6.65, 7.28]) { shellChair(x, 4.88, 's'); shellChair(x, 6.22, 'n'); }
   // ===== 1.08 KUCHYŇ (INT7, INT8) =====
   // vysoký dubový blok se spotřebiči (čelem k ostrůvku)
-  box('oakPanel', 4.35, 0, 8.35, 5.00, H1, 11.45);
-  for (const z of [8.45, 9.40, 10.05, 10.70]) box('cabinetGray', 5.000, 0.02, z - 0.002, 5.003, 2.68, z + 0.002, { c: false });
-  for (const y of [0.84, 1.48, 1.90]) box('cabinetGray', 5.000, y - 0.002, 9.40, 5.003, y + 0.002, 11.44, { c: false });
-  box('blackMatte', 4.98, 0.03, 8.48, 5.025, 1.86, 9.37);                          // lednice side-by-side
-  box('cabinetGray', 5.025, 0.05, 8.922, 5.027, 1.84, 8.928, { c: false });
-  box('steel', 5.03, 0.75, 8.85, 5.06, 1.40, 8.88, { c: false }); box('steel', 5.03, 0.75, 8.97, 5.06, 1.40, 9.00, { c: false });
-  box('techGray', 5.026, 1.05, 9.05, 5.028, 1.38, 9.28, { c: false });
-  for (const z of [9.45, 10.07]) { box('blackGlass', 4.99, 0.86, z, 5.02, 1.46, z + 0.58); box('steel', 5.02, 1.38, z + 0.05, 5.035, 1.40, z + 0.53, { c: false }); }
+  // dubový blok rozdělený kolem lednice (z 8.48–9.37) a trouby (z 9.48–10.00) – dutiny jsou průhledné do vnitřku
+  box('oakPanel', 4.35, 0, 8.35, 5.00, H1, 8.48);
+  box('oakPanel', 4.35, 0, 8.48, 5.00, 0.03, 9.37); box('oakPanel', 4.35, 1.86, 8.48, 5.00, H1, 9.37); box('oakPanel', 4.35, 0.03, 8.48, 4.42, 1.86, 9.37);
+  box('oakPanel', 4.35, 0, 9.37, 5.00, H1, 9.48);
+  box('oakPanel', 4.35, 0, 9.48, 5.00, 0.88, 10.00); box('oakPanel', 4.35, 1.44, 9.48, 5.00, H1, 10.00); box('oakPanel', 4.35, 0.88, 9.48, 4.45, 1.44, 10.00);
+  box('oakPanel', 4.35, 0, 10.00, 5.00, H1, 11.45);
+  for (const z of [10.05, 10.70]) box('cabinetGray', 5.000, 0.02, z - 0.002, 5.003, 2.68, z + 0.002, { c: false });
+  for (const y of [1.48, 1.90]) box('cabinetGray', 5.000, y - 0.002, 9.40, 5.003, y + 0.002, 11.44, { c: false });
+  box('blackGlass', 4.99, 0.86, 10.07, 5.02, 1.46, 10.65); box('steel', 5.02, 1.38, 10.12, 5.035, 1.40, 10.60, { c: false });   // druhá trouba (zavřená)
+  buildFridgeInside(); buildOvenInside();
+  COLL.push([4.42, 0, 8.48, 4.99, 1.86, 9.37], [4.45, 0.88, 9.48, 4.99, 1.44, 10.0]);
   // obklad bloku na straně chodby + LED průřezy (INT4)
   box('oakPanel', 4.13, 0, 8.13, 4.15, H1, 11.45, { c: false });
   box('oakPanel', 4.13, 0, 8.13, 5.02, H1, 8.15, { c: false });
@@ -1295,22 +1319,6 @@ function buildPool() {
   for (let i = 0; i < 4; i++) box('poolTile', x0 + 0.5, d, z1 - 0.35 * (4 - i), x1 - 0.5, -0.3 * (i + 1), z1, { c: false });   // schody (jižní konec)
   box('water', x0, -0.12, z0, x1, -0.11, z1, { c: false });
   COLL.push([x0 - 0.05, -2, z0 - 0.05, x1 + 0.05, 0.95, z1 + 0.05]);
-  // nízké teleskopické zastřešení – oblouky přes šířku (osa x), segmenty po délce (osa z)
-  const ex0 = x0 - 0.42, ex1 = x1 + 0.42, ez0 = z0 - 0.42, ez1 = z1 + 0.42, H = 1.05, W = (ex1 - ex0) / 2, xc = (ex0 + ex1) / 2;
-  const N = 14, arc = (i, sh) => { const t = Math.PI * i / N; return [xc - Math.cos(t) * W * sh, dy + Math.sin(t) * H * sh]; };
-  const segs = 3, L = (ez1 - ez0) / segs;
-  for (let k = 0; k < segs; k++) {
-    const s0 = ez0 + k * L, s1 = s0 + L + (k < segs - 1 ? 0.02 : 0), sh = 1 + (segs - 1 - k) * 0.025;
-    for (let i = 0; i < N; i++) {
-      const A = arc(i, sh), B = arc(i + 1, sh);
-      quad('polycarb', [A[0], A[1], s0], [A[0], A[1], s1], [B[0], B[1], s1], [B[0], B[1], s0]);
-      for (const zr of [s0, s1 - 0.05]) prism('alu', 'x', [[A[0], A[1] - 0.04], [B[0], B[1] - 0.04], [B[0], B[1] + 0.01], [A[0], A[1] + 0.01]], zr, zr + 0.05, false);
-    }
-    box('alu', xc - W * sh, dy, s0, xc - W * sh + 0.05, dy + 0.06, s1, { c: false });
-    box('alu', xc + W * sh - 0.05, dy, s0, xc + W * sh, dy + 0.06, s1, { c: false });
-  }
-  for (const ze of [ez0 - 0.01, ez1 + 0.01]) { const sh = ze < z0 ? 1 + (segs - 1) * 0.025 : 1; for (let i = 0; i < N; i++) { const A = arc(i, sh), B = arc(i + 1, sh); tri('polycarb', [xc, dy, ze], [A[0], A[1], ze], [B[0], B[1], ze], [0, 0, ze < z0 ? -1 : 1]); } }
-  COLL.push([ex0 - 0.12, 0, ez0 - 0.05, ex1 + 0.12, H + 0.1, ez1 + 0.05]);
   // lehátka (3 ks) na terase východně od bazénu, hlavou k plotu
   const lounger = (cz, xa) => {
     const w = 0.66, L = 1.95, za = cz - w / 2, zb = cz + w / 2, xb = xa + L, y0 = dy;
@@ -1565,6 +1573,101 @@ function buildGateLeaf(len, h) {
   box('chrome', len - 0.16, 1.0, -0.07, len - 0.1, 1.03, 0.07, { c: false });
 }
 
+// ---------- LEDNICE (side-by-side) – vnitřek s potravinami ----------
+function buildFridgeInside() {
+  const x0 = 4.42, x1 = 4.985, y0 = 0.03, y1 = 1.86, z0 = 8.48, z1 = 9.37, zm = 8.925, t = 0.02;
+  box('fridgeIn', x0, y0, z0, x0 + t, y1, z1, { c: false });                 // záda
+  box('fridgeIn', x0, y0, z0, x1, y0 + t, z1, { c: false });                 // dno
+  box('fridgeIn', x0, y1 - t, z0, x1, y1, z1, { c: false });                 // strop
+  box('fridgeIn', x0, y0, z0, x1, y1, z0 + t, { c: false }); box('fridgeIn', x0, y0, z1 - t, x1, y1, z1, { c: false });
+  box('fridgeIn', x0, y0, zm - 0.02, x1, y1, zm + 0.02, { c: false });       // přepážka mrazák | lednice
+  box('fridgeLight', x0 + 0.1, y1 - t - 0.004, zm + 0.12, x0 + 0.4, y1 - t, z1 - 0.12, { c: false });
+  box('fridgeLight', x0 + 0.1, y1 - t - 0.004, z0 + 0.1, x0 + 0.4, y1 - t, zm - 0.1, { c: false });
+  const zA = zm + 0.02, zB = z1 - t, zF0 = z0 + t, zF1 = zm - 0.02, xi0 = x0 + t, xi1 = x1 - 0.01;
+  // LEDNICE (pravá část): skleněné police + potraviny
+  const shelves = [0.42, 0.78, 1.12, 1.46];
+  for (const y of shelves) box('fridgeGlass', xi0, y, zA, xi1, y + 0.008, zB, { c: false });
+  box('fridgeGlass', xi0, 0.06, zA + 0.01, xi1 - 0.02, 0.38, zB - 0.01, { c: false });       // šuplík na zeleninu
+  const R = rng(321);
+  for (let i = 0; i < 5; i++) sphere(i % 2 ? 'tomato' : 'lettuce', 4.55 + R() * 0.28, 0.13 + R() * 0.06, zA + 0.08 + i * 0.07, 0.045, 0.045, 0.045, 8);
+  for (let i = 0; i < 3; i++) { const z = zA + 0.05 + i * 0.05; box('carrot', 4.6, 0.25, z, 4.85, 0.275, z + 0.025, { c: false }); }
+  let y = 0.428;                                                    // police 1: jogurty, máslo, sýr
+  for (let i = 0; i < 4; i++) cyl('yogurt', 4.52 + (i % 2) * 0.09, zA + 0.06 + Math.floor(i / 2) * 0.09, 0.035, y, y + 0.08, 12, false);
+  box('butter', 4.72, y, zA + 0.05, 4.85, y + 0.06, zA + 0.15, { c: false });
+  prism('cheese', 'x', [[zB - 0.2, y], [zB - 0.04, y], [zB - 0.04, y + 0.07]], 4.6, 4.75, false);
+  y = 0.788;                                                        // police 2: mléko, maso, vajíčka
+  box('milk', 4.5, y, zA + 0.04, 4.57, y + 0.24, zA + 0.11, { c: false }); box('milk', 4.6, y, zA + 0.04, 4.67, y + 0.24, zA + 0.11, { c: false });
+  box('meat', 4.72, y, zA + 0.05, 4.92, y + 0.05, zA + 0.22, { c: false });
+  box('cabinetGray', 4.55, y, zB - 0.2, 4.85, y + 0.04, zB - 0.04, { c: false });
+  for (let i = 0; i < 6; i++) sphere('egg', 4.58 + (i % 3) * 0.1, y + 0.065, zB - 0.16 + Math.floor(i / 3) * 0.08, 0.025, 0.032, 0.025, 8);
+  y = 1.128;                                                        // police 3: zbytky v miskách, dort
+  cyl('cabinet', 4.6, zA + 0.12, 0.09, y, y + 0.08, 18, false); cyl('carrot', 4.6, zA + 0.12, 0.08, y + 0.07, y + 0.081, 18, false);
+  cyl('cream', 4.75, zB - 0.13, 0.11, y, y + 0.09, 20, false); cyl('tomato', 4.75, zB - 0.13, 0.11, y + 0.09, y + 0.1, 20, false);
+  y = 1.468;                                                        // police 4: sklenice, nápoje
+  for (let i = 0; i < 3; i++) { cyl(i === 1 ? 'cheese' : 'tomato', 4.55 + i * 0.12, zA + 0.08, 0.035, y, y + 0.11, 12, false); cyl('steel', 4.55 + i * 0.12, zA + 0.08, 0.037, y + 0.11, y + 0.13, 12, false); }
+  box('juice', 4.6, y, zB - 0.15, 4.7, y + 0.25, zB - 0.06, { c: false });
+  // MRAZÁK (levá část): koše a krabice
+  for (const yy of [0.45, 0.85, 1.25]) box('fridgeGlass', xi0, yy, zF0, xi1, yy + 0.008, zF1, { c: false });
+  for (const [yy, m] of [[0.06, 'cabinetGray'], [0.46, 'ice'], [0.86, 'meat'], [1.26, 'yogurt']]) {
+    box('fridgeIn', 4.47, yy, zF0 + 0.02, 4.92, yy + 0.02, zF1 - 0.02, { c: false });
+    for (let i = 0; i < 3; i++) box(m === 'cabinetGray' ? (i % 2 ? 'carrot' : 'lettuce') : m, 4.5 + i * 0.13, yy + 0.02, zF0 + 0.05 + (i % 2) * 0.12, 4.6 + i * 0.13, yy + 0.12 + R() * 0.12, zF0 + 0.2 + (i % 2) * 0.12, { c: false });
+  }
+}
+// dveře lednice – lokální souřadnice: pant v počátku, křídlo podél +z (délka w), tloušťka do +x; side = -1 pro levé (zrcadlově)
+function buildFridgeDoor(w, h, freezer) {
+  box('blackMatte', 0, 0, 0, 0.045, h, w, { c: false });
+  box('steel', 0.045, h * 0.42, w - 0.06, 0.075, h * 0.78, w - 0.035, { c: false });            // madlo
+  // vnitřní strana: přihrádky ve dveřích
+  box('fridgeIn', -0.012, 0.02, 0.02, 0, h - 0.02, w - 0.02, { c: false });
+  for (const yy of [0.25, 0.65, 1.05, 1.4]) box('fridgeGlass', -0.1, yy, 0.05, -0.012, yy + 0.09, w - 0.05, { c: false });
+  if (!freezer) {
+    for (let i = 0; i < 3; i++) cyl(i === 1 ? 'bottleGreen' : 'juice', -0.05, 0.1 + i * 0.12, 0.035, 0.26, 0.5, 12, false);
+    for (let i = 0; i < 4; i++) cyl(i % 2 ? 'tomato' : 'cheese', -0.05, 0.08 + i * 0.09, 0.025, 0.66, 0.78, 10, false);
+    for (let i = 0; i < 5; i++) sphere('egg', -0.05, 1.1, 0.07 + i * 0.065, 0.022, 0.03, 0.022, 7);
+  } else for (let i = 0; i < 3; i++) box('ice', -0.09, 0.66 + i * 0.4, 0.08, -0.02, 0.72 + i * 0.4, w - 0.08, { c: false });
+}
+// ---------- TROUBA – vnitřek s kuřetem ----------
+function buildOvenInside() {
+  const x0 = 4.45, x1 = 4.99, y0 = 0.88, y1 = 1.44, z0 = 9.48, z1 = 10.0, t = 0.015;
+  box('ovenIn', x0, y0, z0, x0 + t, y1, z1, { c: false }); box('ovenIn', x0, y0, z0, x1, y0 + t, z1, { c: false }); box('ovenIn', x0, y1 - t, z0, x1, y1, z1, { c: false });
+  box('ovenIn', x0, y0, z0, x1, y1, z0 + t, { c: false }); box('ovenIn', x0, y0, z1 - t, x1, y1, z1, { c: false });
+  box('ovenLight', x0 + t + 0.001, y1 - 0.09, z1 - 0.1, x0 + t + 0.003, y1 - 0.04, z1 - 0.05, { c: false });
+  LAMPS.push([4.75, 1.3, 9.74]);
+  for (const yy of [1.03, 1.2]) for (let i = 0; i < 9; i++) box('steel', x0 + 0.03, yy, z0 + 0.04 + i * 0.055, x1 - 0.03, yy + 0.006, z0 + 0.046 + i * 0.055, { c: false });  // rošty
+  // pekáč s kuřetem
+  box('steel', 4.55, 1.036, 9.55, 4.92, 1.09, 9.93, { c: false });
+  box('chickenDark', 4.57, 1.06, 9.57, 4.90, 1.065, 9.91, { c: false });              // výpek
+  sphere('chicken', 4.735, 1.13, 9.74, 0.12, 0.075, 0.15, 14);                          // tělo
+  sphere('chicken', 4.735, 1.165, 9.72, 0.085, 0.055, 0.1, 12);                         // prsa
+  for (const sx of [-1, 1]) { sphere('chicken', 4.735 + sx * 0.085, 1.11, 9.85, 0.045, 0.04, 0.075, 10); sphere('chickenDark', 4.735 + sx * 0.075, 1.115, 9.92, 0.02, 0.02, 0.03, 8);   // stehna + paličky
+    sphere('chicken', 4.735 + sx * 0.12, 1.12, 9.66, 0.03, 0.025, 0.06, 8); }                                                                     // křidélka
+  for (let i = 0; i < 6; i++) sphere(i % 2 ? 'carrot' : 'cheese', 4.6 + (i % 3) * 0.13, 1.08, i < 3 ? 9.6 : 9.88, 0.025, 0.02, 0.03, 6);      // brambory, mrkev
+}
+// dvířka trouby – lokální: pant dole v počátku, deska nahoru (+y, výška h), šířka podél +z (w)
+function buildOvenDoor(w, h) {
+  box('blackGlass', 0, 0, 0, 0.03, h, w, { c: false });
+  box('steel', 0.03, h - 0.08, 0.05, 0.045, h - 0.06, w - 0.05, { c: false });
+  box('fridgeGlass', -0.004, 0.08, 0.06, 0, h - 0.12, w - 0.06, { c: false });
+}
+// ---------- ZASTŘEŠENÍ BAZÉNU – segment k (posuvný) ----------
+function buildPoolSeg(k) {
+  const { x0, x1, z0, z1 } = POOL, dy = 0.035;
+  const ex0 = x0 - 0.42, ex1 = x1 + 0.42, ez0 = z0 - 0.42, ez1 = z1 + 0.42, H = 1.05, W = (ex1 - ex0) / 2, xc = (ex0 + ex1) / 2;
+  const N = 14, segs = 3, L = (ez1 - ez0) / segs, arc = (i, sh) => { const t = Math.PI * i / N; return [xc - Math.cos(t) * W * sh, dy + Math.sin(t) * H * sh]; };
+  const s0 = ez0 + k * L, s1 = s0 + L + (k < segs - 1 ? 0.02 : 0), sh = 1 + (segs - 1 - k) * 0.025;
+  for (let i = 0; i < N; i++) {
+    const A = arc(i, sh), B = arc(i + 1, sh);
+    quad('polycarb', [A[0], A[1], s0], [A[0], A[1], s1], [B[0], B[1], s1], [B[0], B[1], s0]);
+    for (const zr of [s0, s1 - 0.05]) prism('alu', 'x', [[A[0], A[1] - 0.04], [B[0], B[1] - 0.04], [B[0], B[1] + 0.01], [A[0], A[1] + 0.01]], zr, zr + 0.05, false);
+  }
+  box('alu', xc - W * sh, dy, s0, xc - W * sh + 0.05, dy + 0.06, s1, { c: false });
+  box('alu', xc + W * sh - 0.05, dy, s0, xc + W * sh, dy + 0.06, s1, { c: false });
+  const ze = k === 0 ? ez0 - 0.01 : k === segs - 1 ? ez1 + 0.01 : null;
+  if (ze != null) for (let i = 0; i < N; i++) { const A = arc(i, sh), B = arc(i + 1, sh); tri('polycarb', [xc, dy, ze], [A[0], A[1], ze], [B[0], B[1], ze], [0, 0, ze < z0 ? -1 : 1]); }
+  if (k === segs - 1) box('alu', xc - 0.15, 0.25, ez1 + 0.01, xc + 0.15, 0.29, ez1 + 0.05, { c: false });   // madlo
+  return { L, ez0, ez1, ex0, ex1, H };
+}
+
 function buildAll() {
   for (const w of WALLS) buildWall(w);
   for (const o of OPENINGS) buildOpening(o);
@@ -1798,6 +1901,7 @@ const M4 = {
   },
   model(tx, ty, tz, ang) { const c = Math.cos(ang), s = Math.sin(ang); return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, tx, ty, tz, 1]); },
   ident() { return M4.model(0, 0, 0, 0); },
+  rotZ(tx, ty, tz, a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, tx, ty, tz, 1]); },
 };
 
 const VS = `#version 300 es
@@ -2109,6 +2213,7 @@ class Renderer {
     const o = OPT[id]; o.on = on;
     for (const b of o.g.bs) b.hidden = !on; for (const c of o.g.coll) c.off = !on;
     if (o.off) { for (const b of o.off.bs) b.hidden = on; for (const c of o.off.coll) c.off = on; }
+    if (o.extra) { for (const b of o.extra) b.hidden = !on; for (const c of o.extraColl) c.off = !on; }
     const e = document.getElementById(o.btn); if (e) { e.classList.toggle('on', on); e.textContent = o.label + (on ? '' : ' (skrytý)'); }
     if (typeof S !== 'undefined') S.shadowDirty = true;
     try { localStorage.setItem(o.key, on ? '1' : '0'); } catch (_) { }
@@ -2186,6 +2291,53 @@ class Renderer {
     for (const p of o.parts) p.model = m; o.coll.off = o.t > 0.6;
   };
   gateList.forEach(updGate);
+  // ===== INTERAKTIVNÍ VĚCI: lednice, trouba, zastřešení bazénu =====
+  let markShadow = () => { };
+  const mkDyn = (fn) => { for (const k in GEO) delete GEO[k]; const r = fn(); const parts = []; for (const k in GEO) { const b = R.addBatch(k, GEO[k]); b.cast = false; parts.push(b); } for (const k in GEO) delete GEO[k]; R.dyn.push(...parts); return { parts, r }; };
+  const ease = t => t * t * (3 - 2 * t);
+  const fdL = mkDyn(() => buildFridgeDoor(0.445, 1.83, true)), fdR = mkDyn(() => buildFridgeDoor(0.445, 1.83, false));
+  const ovD = mkDyn(() => buildOvenDoor(0.52, 0.56));
+  const poolSegs = [0, 1, 2].map(k => mkDyn(() => buildPoolSeg(k)));
+  const PS = poolSegs[0].r, poolColl = [PS.ex0 - 0.12, 0, PS.ez0 - 0.05, PS.ex1 + 0.12, PS.H + 0.1, PS.ez1 + 0.05]; COLL.push(poolColl);
+  if (OPT.pool) OPT.pool.extra = poolSegs.flatMap(p => p.parts), OPT.pool.extraColl = [poolColl];
+  const ACTS = [
+    { name: 'lednici', c: [5.0, 1.1, 8.93], r: 1.7, t: 0, on: false, upd(e) {
+        const a = e * 1.75;   // ~100°
+        for (const p of fdL.parts) p.model = M4.model(4.985, 0.03, 8.48, -Math.PI / 2 + a); for (const p of fdR.parts) p.model = M4.model(4.985, 0.03, 9.37, Math.PI / 2 - a);
+        fdL.parts.forEach(p => p.model = M4.mul(M4.model(4.985, 0.03, 8.48, a), new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])));
+      } },
+    { name: 'troubu', c: [5.0, 1.15, 9.74], r: 1.6, t: 0, on: false, upd(e) { for (const p of ovD.parts) p.model = M4.rotZ(4.99, 0.86, 9.48, -e * Math.PI / 2 * 0.98); } },
+    { name: 'zastřešení bazénu', c: [(PS.ex0 + PS.ex1) / 2, 0.6, (PS.ez0 + PS.ez1) / 2], r: 0, t: 0, on: false, pool: true, upd(e) {
+        poolSegs.forEach((sg, k) => { const m = M4.model(0, 0, -k * PS.L * 0.97 * e, 0); for (const p of sg.parts) p.model = m; });
+        poolColl[5] = PS.ez1 + 0.05 - (PS.ez1 - PS.ez0 - PS.L) * e; markShadow();
+      } },
+  ];
+  // dveře lednice: levé (mrazák) pant u z=8.48 → otevírá se k -z; pravé pant u z=9.37 → k +z
+  ACTS[0].upd = function (e) {
+    const a = e * 1.75;
+    const mL = M4.model(4.985, 0.03, 8.48, a);                 // lokální +z → (sin a, 0, cos a): s rostoucím a se křídlo vyklápí do +x
+    const mR = M4.mul(M4.model(4.985, 0.03, 9.37, -a), new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1]));
+    for (const p of fdL.parts) p.model = mL; for (const p of fdR.parts) p.model = mR;
+  };
+  ACTS.forEach(a => a.upd(0));
+  let actCur = null;
+  function actNearest(hx, hz, fx, fz) {
+    let best = null, bd = 1e9;
+    for (const a of ACTS) {
+      if (a.pool && !OPT.pool.on) continue;
+      let d;
+      if (a.pool) { const cx = Math.max(PS.ex0, Math.min(hx, PS.ex1)), cz = Math.max(PS.ez0, Math.min(hz, PS.ez1)); d = Math.hypot(hx - cx, hz - cz); if (d > 1.6 || P.feet > 1) continue; }
+      else { if (Math.abs(P.feet) > 0.5) continue; d = Math.hypot(hx - a.c[0], hz - a.c[2]); if (d > a.r) continue; const dot = ((a.c[0] - hx) * fx + (a.c[2] - hz) * fz) / (d || 1); if (dot < 0.35) continue; }
+      if (d < bd) { bd = d; best = a; }
+    }
+    return best;
+  }
+  function actToggle() { if (actCur) { actCur.on = !actCur.on; showAct(); } }
+  function showAct() { const el = document.getElementById('act'); if (!el) return; if (!actCur) { el.classList.add('hide'); return; } el.classList.remove('hide'); el.textContent = `${matchMedia('(pointer:coarse)').matches ? 'Klepněte' : 'R / klik'} – ${actCur.on ? 'zavřít' : 'otevřít'} ${actCur.name}`; }
+  function stepActs(dt, hx, hz, fx, fz) {
+    const n = actNearest(hx, hz, fx, fz); if (n !== actCur) { actCur = n; showAct(); }
+    for (const a of ACTS) { const tg = a.on ? 1 : 0; if (a.t !== tg) { a.t = Math.max(0, Math.min(1, a.t + Math.sign(tg - a.t) * dt * (a.pool ? 0.35 : 1.6))); a.upd(ease(a.t)); } }
+  }
   const updHS = o => { const d = o.h.slide * (o.t * o.t * (3 - 2 * o.t)); const m = o.h.ax === 'x' ? M4.model(d, 0, 0, 0) : M4.model(0, 0, d, 0); for (const p of o.parts) p.model = m; o.coll.off = o.t > 0.7; };
   const updDoor = o => { const m = M4.model(o.d.h[0], o.d.y0, o.d.h[1], o.base + o.delta * (o.t * o.t * (3 - 2 * o.t))); for (const p of o.parts) p.model = m; };
   doors.forEach(updDoor);
@@ -2198,6 +2350,7 @@ class Renderer {
   for (const L of LAMPS) { const i = roomOf(L[0], L[1], L[2]); lp.push(L[0], L[1], L[2], i >= 0 ? ROOMS[i][8] : -1); }
 
   // --- stav ---
+  markShadow = () => { S.shadowDirty = true; };
   const S = {
     fov: 75 * Math.PI / 180, eye: [0, 0, 0], target: [0, 0, 1], sunDir: [0, 1, 0], shadowDirty: true,
     rooms: { n: ROOMS.length, min: new Float32Array(rmin), max: new Float32Array(rmax), grp: new Int32Array(rgrp) },
@@ -2318,13 +2471,14 @@ class Renderer {
     P.feet = Math.max(terrainH(P.x, P.z), Math.min(60, P.feet + dy));
   }
   const flyHold = { up: false, down: false };
-  addEventListener('keydown', e => { keys[e.code] = true; if (FLY && (e.code === 'Space' || e.code === 'ControlLeft')) e.preventDefault(); if (e.code === 'KeyF') toggleFly(); if (e.code === 'KeyL') toggleLamps(); if (e.code === 'KeyM') toggleMenu(); if (e.code === 'KeyH') $('help').classList.toggle('hide'); if (e.code === 'KeyP') $('bShot').click(); if (e.code === 'KeyG') setOpt('gh', !OPT.gh.on); if (e.code === 'KeyB') setOpt('pool', !OPT.pool.on); });
+  addEventListener('keydown', e => { keys[e.code] = true; if (FLY && (e.code === 'Space' || e.code === 'ControlLeft')) e.preventDefault(); if (e.code === 'KeyF') toggleFly(); if (e.code === 'KeyR') actToggle(); if (e.code === 'KeyL') toggleLamps(); if (e.code === 'KeyM') toggleMenu(); if (e.code === 'KeyH') $('help').classList.toggle('hide'); if (e.code === 'KeyP') $('bShot').click(); if (e.code === 'KeyG') setOpt('gh', !OPT.gh.on); if (e.code === 'KeyB') setOpt('pool', !OPT.pool.on); });
   addEventListener('keyup', e => { keys[e.code] = false; });
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
   const look = (dx, dy, k = 0.0024) => { P.yaw += dx * k; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch - dy * k)); };
   document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === canvas; $('hint').classList.toggle('hide', locked); });
   canvas.addEventListener('mousedown', e => {
     if (!started) return;
+    if (locked && e.button === 0 && actCur) actToggle();
     if (!locked && e.button === 0) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (_) { } }
     drag = { x: e.clientX, y: e.clientY };
   });
@@ -2362,6 +2516,7 @@ class Renderer {
   for (const [id, k] of [['flyUp', 'up'], ['flyDown', 'down']]) { const el = $(id); const on = e => { flyHold[k] = true; e.preventDefault(); }, off = () => { flyHold[k] = false; };
     el.addEventListener('touchstart', on, { passive: false }); el.addEventListener('touchend', off); el.addEventListener('touchcancel', off); el.addEventListener('mousedown', on); el.addEventListener('mouseup', off); el.addEventListener('mouseleave', off); }
   for (const id in OPT) { $(OPT[id].btn).onclick = () => setOpt(id, !OPT[id].on); setOpt(id, OPT[id].on); }
+  $('act').onclick = e => { e.stopPropagation(); actToggle(); };
   $('bRooms').onclick = toggleMenu;
   // ---- panel slunce: datum, čas, předvolby, přehrávání dne ----
   const pad2 = v => String(v).padStart(2, '0');
@@ -2662,6 +2817,7 @@ class Renderer {
     let rayW = null;
     if (raySrc && raySrc.targetRaySpace && xf.getPose) { const rp = xf.getPose(raySrc.targetRaySpace, xrRef); if (rp) rayW = M4.mul(player(), rp.transform.matrix); }
     vrMenuStep(rayW, trig, grip, W, rightY, dt);
+    { let fx = -W[8], fz = -W[10]; const l = Math.hypot(fx, fz) || 1; stepActs(dt, W[12], W[14], fx / l, fz / l); if (!VRM.open && trig && !VRM.actLatch && actCur) actToggle(); VRM.actLatch = trig; }
     const pinv = M4.inv(player()), layer = sess.renderState.baseLayer, views = [];
     for (const v of pose.views) {
       const vp = layer.getViewport(v), Wv = M4.mul(player(), v.transform.matrix);
@@ -2720,12 +2876,13 @@ class Renderer {
     S.target = [P.x + Math.sin(P.yaw) * Math.cos(P.pitch), ey + Math.sin(P.pitch), P.z - Math.cos(P.yaw) * Math.cos(P.pitch)];
     if (SUN.play) { SUN.min = (SUN.min + dt * 40) % 1440; if (Math.floor(SUN.min / 5) !== Math.floor((SUN.min - dt * 40) / 5)) { $('time').value = SUN.min; $('sunTime').value = SUN.min; applySun(); } }
     stepWorld(dt, P.x, P.feet + EYE, P.z);
+    stepActs(dt, P.x, P.z, Math.sin(P.yaw), -Math.cos(P.yaw));
     R.render(S); tickFps(now);
     drawMini();
     requestAnimationFrame(frame);
   }
   teleport(9.2, 4.6, 300, 0);
-  window.__walk = { __vrm: () => [VRM.C.map(v => +v.toFixed(2)), +VRM.ang.toFixed(2), !!VRM.drag], toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
+  window.__walk = { acts: ACTS, actsStep: (d) => stepActs(d, P.x, P.z, Math.sin(P.yaw), -Math.cos(P.yaw)), __vrm: () => [VRM.C.map(v => +v.toFixed(2)), +VRM.ang.toFixed(2), !!VRM.drag], toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
   requestAnimationFrame(frame);
   setupVR();
   $('loading').classList.add('hide');
