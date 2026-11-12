@@ -257,7 +257,7 @@ const streetS = x => -0.67 + Math.max(0, Math.min(1, (x + 10.2) / 36)) * 1.82;
 const streetE = z => 1.04 + Math.max(0, Math.min(1, (z + 2.3) / 21)) * 0.11;
 function outsideH(x, z) {
   if (z > 22.4 && x < 25) return streetS(x);
-  if (x > 27.0) return streetE(z);
+  if (x > 27.0 || (x > 25.5 && z > -2.5 && z < 19.8)) return streetE(z);   // vše za východní hranicí = úroveň ulice
   if (z > 18 && x > 20) return Math.max(streetS(x), streetE(z));
   if (z < -2.5) return x < -0.06 ? -1.22 : -0.10 + Math.max(0, Math.min(1, (x - 14) / 13)) * 0.9;
   if (x < -9.6) return -1.10 + Math.max(0, Math.min(1, (z - 14) / 8)) * 0.43;
