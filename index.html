@@ -119,7 +119,7 @@
     </table>
     <button id="start">Vstoupit do domu</button>
     <button id="startVR" class="hide" style="margin-top:10px;width:100%;padding:11px 20px;border-radius:10px;border:1px solid var(--acc);background:none;color:var(--acc);font-weight:700;font-size:15px;cursor:pointer">🥽 Vstoupit ve VR brýlích</button>
-    <div id="vrHelp" class="sub" style="margin:12px 0 0">Ve VR: levá páčka chůze · pravá páčka otočení · A / X další místnost · B / Y menu s nastavením (datum, čas, světla, kvalita)</div>
+    <div id="vrHelp" class="sub" style="margin:12px 0 0">Ve VR: levá páčka chůze · pravá páčka otočení · A / X další místnost · B / Y menu s nastavením (datum, čas, světla, kvalita) – menu přesunete tlačítkem Grip nebo spouští za horní lištu</div>
   </div>
 </div>
 <div id="loading">Stavím dům…</div>
@@ -2535,15 +2535,17 @@ class Renderer {
     const W = vrc.width, H = vrc.height; VRM.buttons = vrButtons();
     vx.clearRect(0, 0, W, H); vx.fillStyle = '#16181c'; vx.fillRect(0, 0, W, H);
     vx.strokeStyle = '#ffab3d'; vx.lineWidth = 4; vx.strokeRect(2, 2, W - 4, H - 4);
+    vx.fillStyle = VRM.wasDrag ? '#3a3e46' : '#1f2228'; vx.fillRect(4, 4, W - 8, 66);
+    vx.fillStyle = '#6b6f78'; for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { vx.beginPath(); vx.arc(W / 2 - 14 + i * 14, 30 + j * 12, 4, 0, 7); vx.fill(); }
     vx.fillStyle = '#f4f3ef'; vx.font = '700 40px system-ui, sans-serif'; vx.textBaseline = 'middle';
-    vx.fillText('Nastavení', 30, 46);
+    vx.fillText('Nastavení', 30, 40);
     vx.font = '600 34px system-ui, sans-serif'; vx.fillStyle = '#ffab3d'; vx.textAlign = 'right';
-    vx.fillText(`${SUN.d}. ${SUN.mo + 1}. ${SUN.y} · ${fmtM(SUN.min)}`, W - 30, 46); vx.textAlign = 'left';
+    vx.fillText(`${SUN.d}. ${SUN.mo + 1}. ${SUN.y} · ${fmtM(SUN.min)}`, W - 30, 40); vx.textAlign = 'left';
     const { az, el } = sunPos(utcMs(SUN.min)), st = sunTimes();
     vx.font = '26px system-ui, sans-serif'; vx.fillStyle = '#b9bcc2';
     vx.fillText(`Slunce: azimut ${Math.round(az)}°, výška ${el.toFixed(0)}°  ·  východ ${fmtM(st.rise)}  ·  západ ${fmtM(st.set)}`, 30, 396);
     vx.fillText('Kvalita', 30, 552); vx.fillText('Datum', 30, 82); vx.fillText('Čas', 30, 206);
-    vx.font = '22px system-ui, sans-serif'; vx.fillText('Spoušť = klik · B/Y = zavřít menu · A/X = další místnost · při létání pravá páčka nahoru/dolů', 30, 640);
+    vx.font = '22px system-ui, sans-serif'; vx.fillText('Spoušť = klik · přesun: chyťte horní lištu spouští nebo panel tlačítkem Grip (páčka = blíž/dál) · B/Y = zavřít', 30, 640);
     VRM.buttons.forEach((b, i) => {
       if (b.slider) {
         const u = SUN.min / 1435;
@@ -2561,40 +2563,61 @@ class Renderer {
     });
     R.updTex('vrPanel', vrc); VRM.dirty = false;
   }
+  // panel je uložený v souřadnicích hráče (Cl, angL) – chodí a otáčí se s vámi; posunutou polohu si pamatuje
+  const vrPlayer = () => M4.model(P.x, P.feet + (xrFloor ? 0 : EYE), P.z, -P.yaw);
+  const xformPt = (M, p) => [M[0] * p[0] + M[4] * p[1] + M[8] * p[2] + M[12], M[1] * p[0] + M[5] * p[1] + M[9] * p[2] + M[13], M[2] * p[0] + M[6] * p[1] + M[10] * p[2] + M[14]];
+  function setPanelWorld(Cw, angW) { VRM.Cl = xformPt(M4.inv(vrPlayer()), Cw); VRM.angL = angW + P.yaw; }
+  function panelWorld() { const PL = vrPlayer(); VRM.C = xformPt(PL, VRM.Cl); VRM.ang = VRM.angL - P.yaw; vrPanelB.model = M4.mul(PL, M4.model(VRM.Cl[0], VRM.Cl[1], VRM.Cl[2], VRM.angL)); }
   function openVRMenu(headW) {
-    let fx = -headW[8], fz = -headW[10]; const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
-    VRM.C = [headW[12] + fx * 0.75, headW[13] - 0.25, headW[14] + fz * 0.75];
-    VRM.ang = Math.atan2(-fx, -fz);   // normála panelu míří k hlavě
-    vrPanelB.model = M4.model(VRM.C[0], VRM.C[1], VRM.C[2], VRM.ang);
-    VRM.open = true; VRM.dirty = true; vrPanelB.hidden = false;
+    if (!VRM.Cl) {
+      let fx = -headW[8], fz = -headW[10]; const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
+      setPanelWorld([headW[12] + fx * 0.75, headW[13] - 0.25, headW[14] + fz * 0.75], Math.atan2(-fx, -fz));
+    }
+    VRM.open = true; VRM.dirty = true; vrPanelB.hidden = false; panelWorld();
   }
-  function closeVRMenu() { VRM.open = false; vrPanelB.hidden = true; laserB.hidden = true; }
-  function vrMenuStep(rayW, trig, sess) {
-    if (!VRM.open) { laserB.hidden = true; VRM.trigLatch = trig; return; }
-    let hover = -1, dist = 2.5, u = 0, v = 0;
+  function closeVRMenu() { VRM.open = false; VRM.drag = null; vrPanelB.hidden = true; laserB.hidden = true; }
+  function vrMenuStep(rayW, trig, grip, headW, stickY, dt) {
+    if (!VRM.open) { laserB.hidden = true; VRM.trigLatch = trig; VRM.gripLatch = grip; return; }
+    panelWorld();
+    let hover = -1, dist = 2.5, u = -1, v = -1, onPanel = false, lx = 0, ly = 0;
+    const o = rayW ? [rayW[12], rayW[13], rayW[14]] : null, d = rayW ? [-rayW[8], -rayW[9], -rayW[10]] : null;
     if (rayW) {
-      const o = [rayW[12], rayW[13], rayW[14]], d = [-rayW[8], -rayW[9], -rayW[10]];
       const c = Math.cos(VRM.ang), sn = Math.sin(VRM.ang), N = [sn, 0, c], Rt = [c, 0, -sn];
       const den = d[0] * N[0] + d[1] * N[1] + d[2] * N[2];
       if (Math.abs(den) > 1e-4) {
         const tt = ((VRM.C[0] - o[0]) * N[0] + (VRM.C[1] - o[1]) * N[1] + (VRM.C[2] - o[2]) * N[2]) / den;
-        if (tt > 0 && tt < 5) {
+        if (tt > 0 && tt < 6) {
           const hp = [o[0] + d[0] * tt - VRM.C[0], o[1] + d[1] * tt - VRM.C[1], o[2] + d[2] * tt - VRM.C[2]];
-          const lx = hp[0] * Rt[0] + hp[2] * Rt[2], ly = hp[1];
+          lx = hp[0] * Rt[0] + hp[2] * Rt[2]; ly = hp[1];
           if (Math.abs(lx) <= 0.5 && Math.abs(ly) <= 0.33) {
-            dist = tt; u = (lx + 0.5) * vrc.width; v = (0.33 - ly) / 0.66 * vrc.height;
+            onPanel = true; dist = tt; u = (lx + 0.5) * vrc.width; v = (0.33 - ly) / 0.66 * vrc.height;
             hover = VRM.buttons.findIndex(b => u >= b.x && u <= b.x + b.w && v >= b.y && v <= b.y + b.h);
           }
         }
       }
-      const sc = new Float32Array(rayW); for (let i = 8; i < 11; i++) sc[i] *= dist;
-      laserB.model = sc; laserB.hidden = false;
     }
-    if (hover !== VRM.hover) { VRM.hover = hover; VRM.dirty = true; }
-    if (trig && !VRM.trigLatch && hover >= 0) { const b = VRM.buttons[hover]; if (b.slider) b.fn((u - b.x) / b.w); else b.fn(); VRM.dirty = true; }
-    else if (trig && hover >= 0 && VRM.buttons[hover].slider) { const b = VRM.buttons[hover]; b.fn((u - b.x) / b.w); VRM.dirty = true; }
-    VRM.trigLatch = trig;
-    if (VRM.dirty) drawVRMenu();
+    // --- přesun panelu: Grip kdekoli na panelu, nebo spoušť na horní liště ---
+    const startDrag = (grip && !VRM.gripLatch && onPanel) || (trig && !VRM.trigLatch && onPanel && v < 70 && hover < 0);
+    if (startDrag) VRM.drag = { dist, lx, ly, by: grip ? 'grip' : 'trig' };
+    if (VRM.drag && ((VRM.drag.by === 'grip' && !grip) || (VRM.drag.by === 'trig' && !trig) || !rayW)) VRM.drag = null;
+    if (VRM.drag && rayW) {
+      const g = VRM.drag;
+      if (Math.abs(stickY) > 0.2) g.dist = Math.max(0.35, Math.min(3.5, g.dist - stickY * dt * 1.5));   // pravá páčka: přitáhnout / oddálit
+      const hp = [o[0] + d[0] * g.dist, o[1] + d[1] * g.dist, o[2] + d[2] * g.dist];
+      let nx = headW[12] - hp[0], nz = headW[14] - hp[2]; const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+      const angW = Math.atan2(nx, nz), c = Math.cos(angW), sn = Math.sin(angW);
+      setPanelWorld([hp[0] - c * g.lx, hp[1] - g.ly, hp[2] + sn * g.lx], angW);
+      panelWorld(); dist = g.dist; hover = -1;
+    }
+    if (rayW) { const sc = new Float32Array(rayW); for (let i = 8; i < 11; i++) sc[i] *= dist; laserB.model = sc; laserB.hidden = false; }
+    const dragging = !!VRM.drag;
+    if (hover !== VRM.hover || dragging !== VRM.wasDrag) { VRM.hover = hover; VRM.wasDrag = dragging; VRM.dirty = true; }
+    if (!dragging) {
+      if (trig && !VRM.trigLatch && hover >= 0) { const b = VRM.buttons[hover]; if (b.slider) b.fn((u - b.x) / b.w); else b.fn(); VRM.dirty = true; }
+      else if (trig && hover >= 0 && VRM.buttons[hover].slider) { const b = VRM.buttons[hover]; b.fn((u - b.x) / b.w); VRM.dirty = true; }
+    }
+    VRM.trigLatch = trig; VRM.gripLatch = grip;
+    if (VRM.dirty && VRM.open) drawVRMenu();
   }
   function xrFrame(t, xf) {
     const sess = xf.session; sess.requestAnimationFrame(xrFrame);
@@ -2603,26 +2626,26 @@ class Renderer {
     const yOff = xrFloor ? 0 : EYE;
     const player = () => M4.model(P.x, P.feet + yOff, P.z, -P.yaw);
     // ovladače: levá páčka chůze, pravá páčka otáčení po 30°, A/X = další místnost, B/Y = menu, spoušť = klik v menu
-    let mx = 0, my = 0, turn = 0, rightY = 0, btn = false, menuBtn = false, trig = false, raySrc = null;
+    let mx = 0, my = 0, turn = 0, rightY = 0, btn = false, menuBtn = false, trig = false, grip = false, raySrc = null;
     for (const src of sess.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
       const ax = gp.axes, x = ax.length >= 4 ? ax[2] : (ax[0] || 0), y = ax.length >= 4 ? ax[3] : (ax[1] || 0);
       const pr = i => gp.buttons[i] && gp.buttons[i].pressed;
-      if (src.handedness === 'right') { turn = x; rightY = y; if (pr(4)) btn = true; raySrc = src; if (pr(0)) trig = true; }
-      else { mx = x; my = y; if (pr(4)) btn = true; if (!raySrc) raySrc = src; if (pr(0) && raySrc === src) trig = true; }
+      if (src.handedness === 'right') { turn = x; rightY = y; if (pr(4)) btn = true; raySrc = src; if (pr(0)) trig = true; if (pr(1)) grip = true; }
+      else { mx = x; my = y; if (pr(4)) btn = true; if (!raySrc) raySrc = src; if (raySrc === src) { if (pr(0)) trig = true; if (pr(1)) grip = true; } }
       if (pr(5)) menuBtn = true;
     }
     if (menuBtn && !VRM.btnLatch) VRM.open ? closeVRMenu() : (VRM.wantOpen = true);
     VRM.btnLatch = menuBtn;
-    if (VRM.open) { mx = my = 0; btn = false; }
-    if (Math.abs(turn) > 0.7 && !xrTurnLatch && !VRM.open) { P.yaw += Math.sign(turn) * Math.PI / 6; xrTurnLatch = true; }
+    if (VRM.drag) { turn = 0; }
+    if (Math.abs(turn) > 0.7 && !xrTurnLatch) { P.yaw += Math.sign(turn) * Math.PI / 6; xrTurnLatch = true; }
     if (Math.abs(turn) < 0.3) xrTurnLatch = false;
     if (btn && !xrBtnLatch) { xrRoomIdx = (xrRoomIdx + 1) % xrRooms.length; const r = xrRooms[xrRoomIdx]; teleport(r[0], r[1], r[2], r[3]); }
     xrBtnLatch = btn;
     let W = M4.mul(player(), pose.transform.matrix);
-    if (FLY && !VRM.open) {   // létání ve VR: levá páčka vodorovně ve směru pohledu, pravá páčka nahoru/dolů
+    if (FLY) {   // létání ve VR: levá páčka vodorovně ve směru pohledu, pravá páčka nahoru/dolů
       let fx = -W[8], fz = -W[10]; const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
-      const sp = 4 * dt, up = Math.abs(rightY) > 0.2 ? -rightY : 0;
+      const sp = 4 * dt, up = Math.abs(rightY) > 0.2 && !VRM.drag ? -rightY : 0;
       if (Math.abs(mx) > 0.15 || Math.abs(my) > 0.15 || up) { flyMove((fx * -my + -fz * mx) * sp, up * sp, (fz * -my + fx * mx) * sp); W = M4.mul(player(), pose.transform.matrix); }
     } else if (Math.abs(mx) > 0.15 || Math.abs(my) > 0.15) {
       let fx = -W[8], fz = -W[10]; const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
@@ -2636,7 +2659,7 @@ class Renderer {
     if (VRM.wantOpen) { VRM.wantOpen = false; openVRMenu(W); }
     let rayW = null;
     if (raySrc && raySrc.targetRaySpace && xf.getPose) { const rp = xf.getPose(raySrc.targetRaySpace, xrRef); if (rp) rayW = M4.mul(player(), rp.transform.matrix); }
-    vrMenuStep(rayW, trig, sess);
+    vrMenuStep(rayW, trig, grip, W, rightY, dt);
     const pinv = M4.inv(player()), layer = sess.renderState.baseLayer, views = [];
     for (const v of pose.views) {
       const vp = layer.getViewport(v), Wv = M4.mul(player(), v.transform.matrix);
@@ -2700,7 +2723,7 @@ class Renderer {
     requestAnimationFrame(frame);
   }
   teleport(9.2, 4.6, 300, 0);
-  window.__walk = { toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
+  window.__walk = { __vrm: () => [VRM.C.map(v => +v.toFixed(2)), +VRM.ang.toFixed(2), !!VRM.drag], toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
   requestAnimationFrame(frame);
   setupVR();
   $('loading').classList.add('hide');
