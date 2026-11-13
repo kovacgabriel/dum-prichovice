@@ -55,6 +55,7 @@
   #help { position:fixed; left:12px; bottom:12px; max-width:280px; padding:10px 12px; font-size:12px; color:var(--muted); line-height:1.55; }
   #help b { color:var(--ink); font-weight:600; }
   #flyCtl { position:fixed; right:14px; bottom:170px; display:flex; flex-direction:column; gap:10px; z-index:4; } #flyCtl .btn { width:58px; height:58px; font-size:22px; border-radius:50%; }
+  #fade { position:fixed; inset:0; background:#2f9dbf; z-index:9; pointer-events:none; opacity:0; transition:opacity .8s ease; }
   #act { position:fixed; left:50%; bottom:64px; transform:translateX(-50%); z-index:5; background:rgba(255,171,61,.92); color:#1a1307; font-weight:700; border:0; padding:10px 18px; }
   #joy { position:fixed; width:100px; height:100px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:none; pointer-events:none; }
   #knob { position:absolute; left:30px; top:30px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.45); }
@@ -67,6 +68,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="cross"></div>
+<div id="fade" class="hide"></div>
 <button id="act" class="btn hide"></button>
 <div id="top">
   <div id="room" class="panel">1.06 · Obývací pokoj</div>
@@ -392,6 +394,23 @@ const MATS = {
   meat: { color: '#c4545a', rough: 0.5, spec: 0.2 },
   yogurt: { color: '#e7eef9', rough: 0.5, spec: 0.1 },
   ice: { color: '#d8eef7', op: 0.7, rough: 0.2, spec: 0.6 },
+  sand: { color: '#ffffff', tex: 'sand', ts: 3.0, rough: 0.9, spec: 0.05 },
+  kelp: { color: '#3f7a3a', rough: 0.7, spec: 0.1 },
+  kelp2: { color: '#6a8f2e', rough: 0.7, spec: 0.1 },
+  coralPink: { color: '#e5789a', rough: 0.6, spec: 0.1 },
+  coralOrange: { color: '#f08a3c', rough: 0.6, spec: 0.1 },
+  coralPurple: { color: '#8a5bc4', rough: 0.6, spec: 0.1 },
+  coralYellow: { color: '#f2d24a', rough: 0.6, spec: 0.1 },
+  fishOrange: { color: '#ff7a1a', rough: 0.3, spec: 0.5 },
+  fishWhite: { color: '#f7f7f7', rough: 0.3, spec: 0.5 },
+  fishBlue: { color: '#1f5fd6', rough: 0.3, spec: 0.5 },
+  fishYellow: { color: '#ffd21f', rough: 0.3, spec: 0.5 },
+  fishSilver: { color: '#c8d3dc', rough: 0.15, spec: 0.9 },
+  fishGrey: { color: '#5d6a73', rough: 0.4, spec: 0.3 },
+  fishEye: { color: '#08090a', rough: 0.1, spec: 0.9 },
+  surfaceUW: { color: '#bfeaff', op: 0.6, rough: 0.05, spec: 1.0, cast: false },
+  bubble: { color: '#e8fbff', op: 0.45, rough: 0.05, spec: 1.0, cast: false },
+  gold: { color: '#e8b923', rough: 0.25, spec: 0.9 },
   vrPanel: { color: '#ffffff', tex: 'vrPanel', unlit: true, overlay: true, cast: false },
   laser: { color: '#00d2be', emis: 1, rough: 1, spec: 0, cast: false, overlay: true },
   teal: { color: '#00a19c', rough: 0.4, spec: 0.3 },
@@ -1318,7 +1337,6 @@ function buildPool() {
   for (const [a, b, e, f] of [[x0 - c, z0 - c, x1 + c, z0], [x0 - c, z1, x1 + c, z1 + c], [x0 - c, z0, x0, z1], [x1, z0, x1 + c, z1]]) box('capstone', a, -0.02, b, e, dy + 0.005, f, { c: false });
   for (let i = 0; i < 4; i++) box('poolTile', x0 + 0.5, d, z1 - 0.35 * (4 - i), x1 - 0.5, -0.3 * (i + 1), z1, { c: false });   // schody (jižní konec)
   box('water', x0, -0.12, z0, x1, -0.11, z1, { c: false });
-  COLL.push([x0 - 0.05, -2, z0 - 0.05, x1 + 0.05, 0.95, z1 + 0.05]);
   // lehátka (3 ks) na terase východně od bazénu, hlavou k plotu
   const lounger = (cz, xa) => {
     const w = 0.66, L = 1.95, za = cz - w / 2, zb = cz + w / 2, xb = xa + L, y0 = dy;
@@ -1668,6 +1686,50 @@ function buildPoolSeg(k) {
   return { L, ez0, ez1, ex0, ex1, H };
 }
 
+// ---------- PODMOŘSKÝ SVĚT (daleko od domu, střed UWC) ----------
+const UWC = [400, 0, 400], UW_R = 28, UW_TOP = 9;
+function uwFloor(x, z) { const dx = x - UWC[0], dz = z - UWC[2], r = Math.hypot(dx, dz); return UWC[1] + Math.sin(dx * 0.35) * 0.25 + Math.cos(dz * 0.28 + dx * 0.1) * 0.3 + Math.max(0, r - 18) * 0.35; }
+function buildUnderwater() {
+  const [cx, , cz] = UWC, st = 1.0, n = 70;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {           // písečné dno
+    const xa = cx - 35 + i * st, za = cz - 35 + j * st, xb = xa + st, zb = za + st;
+    const a = [xa, uwFloor(xa, za), za], b = [xb, uwFloor(xb, za), za], c = [xb, uwFloor(xb, zb), zb], d = [xa, uwFloor(xa, zb), zb];
+    tri('sand', a, d, b, norm(cross(sub(d, a), sub(b, a)))); tri('sand', c, b, d, norm(cross(sub(b, c), sub(d, c))));
+  }
+  quad('surfaceUW', [cx - 40, UW_TOP, cz - 40], [cx + 40, UW_TOP, cz - 40], [cx + 40, UW_TOP, cz + 40], [cx - 40, UW_TOP, cz + 40], [0, -1, 0]);   // hladina zespodu
+  const R = rng(4242), at = () => { const a = R() * Math.PI * 2, r = 3 + R() * 22; return [cx + Math.cos(a) * r, cz + Math.sin(a) * r]; };
+  for (let k = 0; k < 40; k++) { const [x, z] = at(), r = 0.3 + R() * 1.1; sphere('boulder', x, uwFloor(x, z) + r * 0.3, z, r * (1 + R() * 0.5), r * 0.7, r, 8); }          // kameny
+  for (let k = 0; k < 90; k++) {                                                                                                                   // chaluhy
+    const [x, z] = at(), h = 1.5 + R() * 4.5, m = R() < 0.6 ? 'kelp' : 'kelp2', ph = R() * 6; let px = x, pz = z, y = uwFloor(x, z) - 0.05;
+    for (let s2 = 0; s2 < 8; s2++) { const ny = y + h / 8, nx = x + Math.sin(ph + s2 * 0.7) * 0.18, nz = z + Math.cos(ph + s2 * 0.5) * 0.12;
+      obox(m, px, pz, nx + 0.001, nz, 0.10 - s2 * 0.008, y, ny, false); obox(m, px - 0.06, pz, px + 0.06, pz + 0.001, 0.02, y + h / 16, ny, false); px = nx; pz = nz; y = ny; }
+  }
+  const corals = ['coralPink', 'coralOrange', 'coralPurple', 'coralYellow'];
+  for (let k = 0; k < 70; k++) {                                                                                                                   // korály
+    const [x, z] = at(), m = corals[k % 4], y0 = uwFloor(x, z), t = R();
+    if (t < 0.4) for (let b = 0; b < 5; b++) cyl(m, x + (R() - 0.5) * 0.3, z + (R() - 0.5) * 0.3, 0.035 + R() * 0.03, y0, y0 + 0.3 + R() * 0.6, 7, false);
+    else if (t < 0.75) sphere(m, x, y0 + 0.15, z, 0.3 + R() * 0.3, 0.22, 0.3 + R() * 0.3, 9);
+    else { for (let b = 0; b < 6; b++) { const a = b / 6 * Math.PI * 2; obox(m, x, z, x + Math.cos(a) * 0.35, z + Math.sin(a) * 0.35, 0.04, y0, y0 + 0.5 + R() * 0.4, false); } }
+  }
+  for (let k = 0; k < 14; k++) { const [x, z] = at(), y0 = uwFloor(x, z); for (let a = 0; a < 5; a++) { const an = a / 5 * Math.PI * 2; obox('coralOrange', x, z, x + Math.cos(an) * 0.13, z + Math.sin(an) * 0.13, 0.05, y0, y0 + 0.03, false); } }   // hvězdice
+  // truhla s pokladem
+  { const x = cx + 6, z = cz - 5, y0 = uwFloor(x, z); box('timber', x - 0.4, y0, z - 0.25, x + 0.4, y0 + 0.4, z + 0.25, { c: false }); box('gold', x - 0.42, y0 + 0.1, z - 0.27, x + 0.42, y0 + 0.14, z + 0.27, { c: false });
+    prism('timber', 'x', [[z - 0.25, y0 + 0.4], [z + 0.25, y0 + 0.4], [z + 0.3, y0 + 0.75], [z - 0.2, y0 + 0.62]], x - 0.4, x + 0.4, false);
+    for (let i = 0; i < 25; i++) cyl('gold', x - 0.3 + R() * 0.6, z - 0.15 + R() * 0.3, 0.035, y0 + 0.4, y0 + 0.41 + R() * 0.04, 10, false); }
+}
+// ryba v lokálních souřadnicích: čumák do +x, délka L
+function buildFish(type) {
+  const T = { clown: ['fishOrange', 'fishWhite', 0.16], tang: ['fishBlue', 'fishYellow', 0.22], yellow: ['fishYellow', 'fishYellow', 0.18], silver: ['fishSilver', 'fishSilver', 0.12], big: ['fishGrey', 'fishSilver', 0.55] }[type];
+  const [m1, m2, L] = T;
+  sphere(m1, 0, 0, 0, L * 0.5, L * (type === 'tang' || type === 'yellow' ? 0.36 : 0.24), L * 0.12, 10);
+  prism(m2, 'x', [[0, 0], [0, 0], [0, 0]], 0, 0, false);
+  const tx = -L * 0.45; quad(m2 === m1 ? m1 : m2, [tx, 0, 0], [tx - L * 0.35, L * 0.22, 0], [tx - L * 0.28, 0, 0], [tx - L * 0.35, -L * 0.22, 0], [0, 0, 1]);   // ocas
+  quad(m1, [-L * 0.1, L * 0.15, 0], [L * 0.15, L * 0.18, 0], [L * 0.05, L * 0.32, 0], [-L * 0.2, L * 0.3, 0], [0, 0, 1]);                                  // hřbetní ploutev
+  if (type === 'clown') for (const xx of [L * 0.18, -L * 0.12]) sphere('fishWhite', xx, 0, 0, L * 0.05, L * 0.22, L * 0.125, 8);
+  if (type === 'big') for (let i = 0; i < 4; i++) sphere('fishSilver', L * (0.25 - i * 0.15), L * 0.02, 0, L * 0.03, L * 0.2, L * 0.123, 6);
+  for (const sz of [-1, 1]) sphere('fishEye', L * 0.32, L * 0.06, sz * L * 0.09, L * 0.035, L * 0.035, L * 0.02, 6);
+}
+
 function buildAll() {
   for (const w of WALLS) buildWall(w);
   for (const o of OPENINGS) buildOpening(o);
@@ -1877,6 +1939,10 @@ const TEX = {
     x.strokeStyle = '#00d2be'; x.lineWidth = 10; x.strokeRect(20, 20, W - 40, H - 40);
     return c;
   },
+  sand(S = 512) { const [c, x] = cnv(S, S), R = rng(181); x.fillStyle = '#d9c79c'; x.fillRect(0, 0, S, S);
+    for (let k = 0; k < 9000; k++) { const v = 170 + R() * 70; x.fillStyle = `rgba(${v},${v * 0.9 | 0},${v * 0.7 | 0},0.5)`; x.fillRect(R() * S, R() * S, 1.5, 1.5); }
+    for (let k = 0; k < 18; k++) { x.strokeStyle = 'rgba(160,140,100,0.18)'; x.lineWidth = 3; x.beginPath(); const y0 = R() * S; x.moveTo(0, y0); for (let i = 0; i <= S; i += 16) x.lineTo(i, y0 + Math.sin(i / 40 + k) * 8); x.stroke(); }
+    return c; },
   fabric(S = 256) { const [c, x] = cnv(S, S), R = rng(91); x.fillStyle = '#c8c5bf'; x.fillRect(0, 0, S, S); for (let i = 0; i < S; i += 2) { x.fillStyle = `rgba(0,0,0,${0.03 + R() * 0.04})`; x.fillRect(0, i, S, 1); x.fillRect(i, 0, 1, S); } noiseLayer(x, S, S, 14, 3); return c; },
 };
 
@@ -2114,7 +2180,7 @@ class Renderer {
   shadowPass(S, all) {
     const gl = this.gl;
     if (S.sunDir[1] > 0.01 && S.shadowDirty) {
-      const c = [8.5, 0.5, 10.0], d = S.sunDir, e = [c[0] + d[0] * 60, c[1] + d[1] * 60, c[2] + d[2] * 60];
+      const c = S.shadowC || [8.5, 0.5, 10.0], d = S.sunDir, e = [c[0] + d[0] * 60, c[1] + d[1] * 60, c[2] + d[2] * 60];
       const up = Math.abs(d[1]) > 0.98 ? [0, 0, 1] : [0, 1, 0];
       const R = 27; this.sVP = M4.mul(M4.ortho(-R, R, -R, R, 20, 115), M4.look(e, c, up));
       for (const t of [gl.TEXTURE0, gl.TEXTURE1, gl.TEXTURE2]) { gl.activeTexture(t); gl.bindTexture(gl.TEXTURE_2D, this.white); }
@@ -2139,7 +2205,7 @@ class Renderer {
     const p = this.prog, u = p.u; gl.useProgram(p);
     gl.uniformMatrix4fv(u.uVP, false, VP); gl.uniformMatrix4fv(u.uView, false, V); gl.uniform3fv(u.uCam, eye);
     gl.uniform3fv(u.uSunDir, S.sunDir); gl.uniform3fv(u.uSunCol, S.sunCol); gl.uniform3fv(u.uSkyCol, S.skyAmb); gl.uniform3fv(u.uGndCol, S.gndAmb); gl.uniform3fv(u.uInAmb, S.inAmb);
-    gl.uniform3fv(u.uFogCol, S.skyHor); gl.uniform1f(u.uFogDen, 0.006); gl.uniform1f(u.uExposure, S.exposure);
+    gl.uniform3fv(u.uFogCol, S.skyHor); gl.uniform1f(u.uFogDen, S.fogDen || 0.006); gl.uniform1f(u.uExposure, S.exposure);
     gl.uniform3fv(u.uLampCol, S.lampCol); gl.uniform1f(u.uLampsOn, S.lampsOn ? 1 : 0);
     gl.uniform1i(u.uTex, 0); gl.uniform1i(u.uShadow, 1); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.sTex);
     gl.uniformMatrix4fv(u.uSVP, false, this.sVP || M4.ident()); gl.uniform1f(u.uSTex, 1 / this.shadowSize); gl.uniform1f(u.uSoft, this.shadowSoft || 1.2);
@@ -2157,7 +2223,7 @@ class Renderer {
   }
   // VR: views = [{vp:[x,y,w,h], P, V, eye}]
   renderXR(S, fb, views) {
-    const gl = this.gl, all = this.batches.concat(this.dyn).filter(b => !b.hidden);
+    const gl = this.gl, all = this.batches.concat(this.dyn).filter(b => !b.hidden && !!b.uw === !!S.uw);
     this.shadowPass(S, all);
     for (const t of [gl.TEXTURE0, gl.TEXTURE1, gl.TEXTURE2]) { gl.activeTexture(t); gl.bindTexture(gl.TEXTURE_2D, this.white); }
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
@@ -2166,7 +2232,7 @@ class Renderer {
   }
   render(S) { // S: scéna/stav
     const gl = this.gl, W = this.W, H = this.H;
-    const all = this.batches.concat(this.dyn).filter(b => !b.hidden);
+    const all = this.batches.concat(this.dyn).filter(b => !b.hidden && !!b.uw === !!S.uw);
     this.shadowPass(S, all);
     const P = M4.persp(S.fov, W / H, 0.05, 400), V = M4.look(S.eye, S.target, [0, 1, 0]);
     for (const t of [gl.TEXTURE0, gl.TEXTURE1, gl.TEXTURE2]) { gl.activeTexture(t); gl.bindTexture(gl.TEXTURE_2D, this.white); }
@@ -2202,7 +2268,7 @@ class Renderer {
   const MOBILE = matchMedia('(pointer:coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
   if (MOBILE) { R.mobile = true; }
   // --- textury + geometrie ---
-  for (const k of ['oak', 'oakPlank', 'oakF', 'grainDark', 'tile', 'wtile', 'plaster', 'grass', 'paving', 'deck', 'cladding', 'stone', 'seam', 'fabric', 'concrete', 'screed', 'marble', 'blocks', 'granite', 'stoneBeige', 'fluted', 'marbleFloor', 'f1Wall', 'num12', 'checker', 'track']) R.tex(k, TEX[k]());
+  for (const k of ['oak', 'oakPlank', 'oakF', 'grainDark', 'tile', 'wtile', 'plaster', 'grass', 'paving', 'deck', 'cladding', 'stone', 'seam', 'fabric', 'concrete', 'screed', 'marble', 'blocks', 'granite', 'stoneBeige', 'fluted', 'marbleFloor', 'f1Wall', 'num12', 'checker', 'track', 'sand']) R.tex(k, TEX[k]());
   buildAll();
   for (const k in GEO) R.batches.push(R.addBatch(k, GEO[k]));
   for (const k in GEO) delete GEO[k];
@@ -2291,6 +2357,40 @@ class Renderer {
     for (const p of o.parts) p.model = m; o.coll.off = o.t > 0.6;
   };
   gateList.forEach(updGate);
+  // ===== PODMOŘSKÝ SVĚT =====
+  const UW = { on: false, fish: [], bubbles: [], saved: null, t: 0, wasFly: false };
+  { for (const k in GEO) delete GEO[k]; buildUnderwater(); for (const k in GEO) { const b = R.addBatch(k, GEO[k]); b.uw = true; b.cast = false; R.batches.push(b); } for (const k in GEO) delete GEO[k];
+    const proto = {}; for (const ty of ['clown', 'tang', 'yellow', 'silver', 'big']) { for (const k in GEO) delete GEO[k]; buildFish(ty); proto[ty] = []; for (const k in GEO) { const b = R.addBatch(k, GEO[k]); b.uw = true; b.cast = false; proto[ty].push(b); } for (const k in GEO) delete GEO[k]; }
+    const Rf = rng(99), add = (ty, c, r, w, h, ph, dy) => { const parts = proto[ty].map(b => Object.assign({}, b, { model: M4.ident() })); R.dyn.push(...parts); UW.fish.push({ parts, c, r, w, h, ph, dy }); };
+    for (let sc = 0; sc < 6; sc++) { const ty = ['silver', 'yellow', 'tang', 'silver', 'clown', 'yellow'][sc], c = [UWC[0] + (Rf() - 0.5) * 12, 1.5 + Rf() * 3, UWC[2] + (Rf() - 0.5) * 12], r = 2.5 + Rf() * 4, w = (0.25 + Rf() * 0.3) * (Rf() < 0.5 ? -1 : 1), n = ty === 'silver' ? 14 : 7;
+      for (let i = 0; i < n; i++) add(ty, c, r + (Rf() - 0.5) * 0.8, w, 0.3 + Rf() * 0.4, Rf() * 0.9, (Rf() - 0.5) * 0.9); }
+    for (let i = 0; i < 4; i++) add('big', [UWC[0] + (Rf() - 0.5) * 10, 3 + Rf() * 3, UWC[2] + (Rf() - 0.5) * 10], 9 + Rf() * 8, (0.08 + Rf() * 0.06) * (i % 2 ? 1 : -1), 0.5, Rf() * 6, 0);
+    for (const k in GEO) delete GEO[k]; sphere('bubble', 0, 0, 0, 0.03, 0.03, 0.03, 6); const bb = R.addBatch('bubble', GEO.bubble); for (const k in GEO) delete GEO[k];
+    for (let i = 0; i < 60; i++) { const b = Object.assign({}, bb, { uw: true, cast: false, model: M4.ident() }); R.dyn.push(b); UW.bubbles.push({ b, x: UWC[0] + (Rf() - 0.5) * 30, z: UWC[2] + (Rf() - 0.5) * 30, y: Rf() * UW_TOP, s: 0.4 + Rf() * 0.6 }); } }
+  function stepUW(dt) {
+    UW.t += dt; const t = UW.t;
+    for (const f of UW.fish) { const th = f.ph + f.w * t, x = f.c[0] + Math.cos(th) * f.r, z = f.c[2] + Math.sin(th) * f.r, y = f.c[1] + f.dy + Math.sin(t * 0.8 + f.ph * 3) * f.h;
+      const vx = -Math.sin(th) * Math.sign(f.w), vz = Math.cos(th) * Math.sign(f.w), a = Math.atan2(-vz, vx) + Math.sin(t * 6 + f.ph * 10) * 0.12;
+      const m = M4.model(x, y, z, a); for (let i = 0; i < 12; i++) if (i % 5 !== 3 || i > 10) m[i] *= 1.7; for (const p of f.parts) p.model = m; }
+    for (const b of UW.bubbles) { b.y += dt * b.s; if (b.y > UW_TOP) b.y = uwFloor(b.x, b.z); b.b.model = M4.model(b.x + Math.sin(t * 2 + b.y) * 0.05, b.y, b.z, 0); }
+  }
+  function uwColors() {
+    if (!UW.on) return;
+    S.skyTop = [0.05, 0.35, 0.5]; S.skyHor = [0.02, 0.2, 0.32]; S.gnd = [0.02, 0.12, 0.18];
+    S.sunCol = S.sunCol.map((v, i) => v * [0.7, 0.9, 1.0][i] * 0.85); S.skyAmb = [0.3, 0.45, 0.5]; S.gndAmb = [0.18, 0.25, 0.26];
+    S.fogDen = 0.045; S.exposure = 1.05;
+  }
+  function flash() { const f = document.getElementById('fade'); if (!f) return; f.classList.remove('hide'); f.style.opacity = '1'; setTimeout(() => { f.style.opacity = '0'; }, 60); setTimeout(() => f.classList.add('hide'), 900); }
+  function uwEnter() {
+    if (UW.on) return; UW.on = true; UW.wasFly = FLY; FLY = true; S.uw = true; S.shadowC = [UWC[0], 2, UWC[2]]; S.shadowDirty = true;
+    P.x = UWC[0]; P.z = UWC[2] + 9; P.yaw = 0; P.feet = 1.2; $('mini').style.display = 'none'; P.vy = 0; P.pitch = -0.1; applySun(); flash(); actCur = UW_EXIT; showAct();
+    $('room').textContent = '🐠 Pod hladinou'; roomShown = '🐠 Pod hladinou';
+  }
+  function uwExit() {
+    if (!UW.on) return; UW.on = false; FLY = UW.wasFly; $('mini').style.display = ''; S.uw = false; S.shadowC = null; S.fogDen = 0.006;
+    const { x0, z0, z1 } = POOL; teleport(x0 - 0.7, (z0 + z1) / 2 + 1.5, 90, 0); applySun(); flash(); actCur = null; showAct();
+  }
+  const UW_EXIT = { name: 'vynořit se – zpět k bazénu', exit: true };
   // ===== INTERAKTIVNÍ VĚCI: lednice, trouba, zastřešení bazénu =====
   let markShadow = () => { };
   const mkDyn = (fn) => { for (const k in GEO) delete GEO[k]; const r = fn(); const parts = []; for (const k in GEO) { const b = R.addBatch(k, GEO[k]); b.cast = false; parts.push(b); } for (const k in GEO) delete GEO[k]; R.dyn.push(...parts); return { parts, r }; };
@@ -2307,7 +2407,7 @@ class Renderer {
         fdL.parts.forEach(p => p.model = M4.mul(M4.model(4.985, 0.03, 8.48, a), new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])));
       } },
     { name: 'troubu', c: [5.0, 1.15, 9.74], r: 1.6, t: 0, on: false, upd(e) { for (const p of ovD.parts) p.model = M4.rotZ(4.99, 0.86, 9.48, -e * Math.PI / 2 * 0.98); } },
-    { name: 'zastřešení bazénu', c: [(PS.ex0 + PS.ex1) / 2, 0.6, (PS.ez0 + PS.ez1) / 2], r: 0, t: 0, on: false, pool: true, upd(e) {
+    { name: 'zastřešení bazénu (pak vejděte do vody)', c: [(PS.ex0 + PS.ex1) / 2, 0.6, (PS.ez0 + PS.ez1) / 2], r: 0, t: 0, on: false, pool: true, upd(e) {
         poolSegs.forEach((sg, k) => { const m = M4.model(0, 0, -k * PS.L * 0.97 * e, 0); for (const p of sg.parts) p.model = m; });
         poolColl[5] = PS.ez1 + 0.05 - (PS.ez1 - PS.ez0 - PS.L) * e; markShadow();
       } },
@@ -2332,9 +2432,12 @@ class Renderer {
     }
     return best;
   }
-  function actToggle() { if (actCur) { actCur.on = !actCur.on; showAct(); } }
-  function showAct() { const el = document.getElementById('act'); if (!el) return; if (!actCur) { el.classList.add('hide'); return; } el.classList.remove('hide'); el.textContent = `${matchMedia('(pointer:coarse)').matches ? 'Klepněte' : 'R / klik'} – ${actCur.on ? 'zavřít' : 'otevřít'} ${actCur.name}`; }
+  function actToggle() { if (actCur && actCur.exit) { uwExit(); return; } if (actCur) { actCur.on = !actCur.on; showAct(); } }
+  function showAct() { const el = document.getElementById('act'); if (!el) return; if (!actCur) { el.classList.add('hide'); return; } el.classList.remove('hide'); el.textContent = actCur.exit ? `${matchMedia('(pointer:coarse)').matches ? 'Klepněte' : 'R / klik'} – ⬆ ${actCur.name}` : `${matchMedia('(pointer:coarse)').matches ? 'Klepněte' : 'R / klik'} – ${actCur.on ? 'zavřít' : 'otevřít'} ${actCur.name}`; }
   function stepActs(dt, hx, hz, fx, fz) {
+    if (UW.on) { stepUW(dt); if (actCur !== UW_EXIT) { actCur = UW_EXIT; showAct(); } return; }
+    // vstup do bazénu (jen když je bazén vidět a zastřešení je odsunuté)
+    { const { x0, x1, z0, z1 } = POOL; if (OPT.pool.on && ACTS[2].t > 0.9 && hx > x0 + 0.1 && hx < x1 - 0.1 && hz > z0 + 0.1 && hz < z1 - 0.1 && Math.abs(P.feet) < 0.4) { uwEnter(); return; } }
     const n = actNearest(hx, hz, fx, fz); if (n !== actCur) { actCur = n; showAct(); }
     for (const a of ACTS) { const tg = a.on ? 1 : 0; if (a.t !== tg) { a.t = Math.max(0, Math.min(1, a.t + Math.sign(tg - a.t) * dt * (a.pool ? 0.35 : 1.6))); a.upd(ease(a.t)); } }
   }
@@ -2403,6 +2506,7 @@ class Renderer {
     S.lampCol = [0.62, 0.48, 0.32];
     S.exposure = 1.0 + (1 - day) * 0.5;
     S.shadowDirty = true;
+    if (typeof UW !== 'undefined') uwColors();
     const e1 = document.getElementById('tval'); if (e1) e1.textContent = `${SUN.d}. ${SUN.mo + 1}. · ${fmtM(SUN.min)}`;
     const e2 = document.getElementById('sunInfo'); if (e2) { const t = sunTimes(); e2.innerHTML = `Slunce: azimut <b>${Math.round(az)}°</b>, výška <b>${elD.toFixed(1)}°</b>${elD < 0 ? ' (pod obzorem)' : ''}<br>Východ <b>${fmtM(t.rise)}</b> · poledne <b>${fmtM(t.noon)}</b> (max ${t.maxEl.toFixed(0)}°) · západ <b>${fmtM(t.set)}</b>`; }
     const tz = czOffset(SUN.y, SUN.mo, SUN.d, Math.floor(SUN.min / 60)); const e3 = document.getElementById('tzInfo'); if (e3) e3.textContent = tz === 2 ? 'letní čas (SELČ)' : 'zimní čas (SEČ)';
@@ -2467,6 +2571,13 @@ class Renderer {
     if (!FLY && typeof VRM !== 'undefined') VRM.dirty = true;
   }
   function flyMove(dx, dy, dz) {   // volný pohyb bez kolizí, nad terénem, max 60 m
+    if (UW.on) {   // plavání pod vodou – v kruhu kolem středu, mezi dnem a hladinou
+      let nx = P.x + dx, nz = P.z + dz; const ox = nx - UWC[0], oz = nz - UWC[2], r = Math.hypot(ox, oz); if (r > UW_R) { nx = UWC[0] + ox / r * UW_R; nz = UWC[2] + oz / r * UW_R; }
+      P.x = nx; P.z = nz; const top = UW_TOP - EYE - 0.15;
+      P.feet = Math.max(uwFloor(P.x, P.z) - EYE + 0.5, Math.min(top, P.feet + dy));
+      if (dy > 0 && P.feet >= top - 0.001) uwExit();
+      return;
+    }
     P.x = Math.max(-60, Math.min(70, P.x + dx)); P.z = Math.max(-50, Math.min(70, P.z + dz));
     P.feet = Math.max(terrainH(P.x, P.z), Math.min(60, P.feet + dy));
   }
@@ -2846,6 +2957,7 @@ class Renderer {
       const nt = Math.max(0, Math.min(1, o.t + (near ? 1 : -1) * dt * 1.8));
       if (nt !== o.t) { o.t = nt; updDoor(o); }
     }
+    if (UW.on) return;
     const ri = roomOf(hx, P.feet + 0.5, hz);
     const name = ri >= 0 ? `${ROOMS[ri][0]} · ${ROOMS[ri][1]}` : 'Venku';
     if (name !== roomShown) { roomShown = name; $('room').textContent = name; }
@@ -2882,7 +2994,7 @@ class Renderer {
     requestAnimationFrame(frame);
   }
   teleport(9.2, 4.6, 300, 0);
-  window.__walk = { acts: ACTS, actsStep: (d) => stepActs(d, P.x, P.z, Math.sin(P.yaw), -Math.cos(P.yaw)), __vrm: () => [VRM.C.map(v => +v.toFixed(2)), +VRM.ang.toFixed(2), !!VRM.drag], toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
+  window.__walk = { uwEnter, uwExit, UW, acts: ACTS, actsStep: (d) => stepActs(d, P.x, P.z, Math.sin(P.yaw), -Math.cos(P.yaw)), __vrm: () => [VRM.C.map(v => +v.toFixed(2)), +VRM.ang.toFixed(2), !!VRM.drag], toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
   requestAnimationFrame(frame);
   setupVR();
   $('loading').classList.add('hide');
