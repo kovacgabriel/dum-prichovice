@@ -478,6 +478,10 @@ const MATS = {
   artRed: { color: '#a8352d', rough: 0.8, spec: 0.02 },
   artPaper: { color: '#f3f0e8', rough: 0.9, spec: 0.02 },
   tweed: { color: '#8b8a86', tex: 'fabric', ts: 0.3, rough: 1, spec: 0.02 },
+  tire: { color: '#151617', rough: 0.9, spec: 0.05 },
+  bikeRed: { color: '#c42a2a', rough: 0.25, spec: 0.7 }, bikeBlue: { color: '#2257a8', rough: 0.25, spec: 0.7 }, bikeGreen: { color: '#3fae5a', rough: 0.25, spec: 0.7 },
+  skiRed: { color: '#d8312a', rough: 0.2, spec: 0.8 }, skiBlue: { color: '#1f6fd0', rough: 0.2, spec: 0.8 }, skiWhite: { color: '#eef0f2', rough: 0.2, spec: 0.8 },
+  skiYellow: { color: '#f2c21b', rough: 0.2, spec: 0.8 }, skiBlack: { color: '#22252a', rough: 0.2, spec: 0.8 },
 };
 
 const GEO = {};      // mat -> {p:[],n:[],u:[]}
@@ -1187,10 +1191,7 @@ function buildExterior() {
   box('frame', -7.65, 3.30, 6.07, -3.92, 3.45, 13.76);
   box('ceil', -7.295, 2.89, 6.428, -4.275, 3.30, 13.408, { c: false });
   box('tile', -7.295, 0, 6.428, -4.275, 0.02, 13.408);
-  for (const y of [0.45, 0.95, 1.45, 1.95]) box('oakFurn', -7.25, y, 6.45, -4.40, y + 0.03, 6.88, { c: false });
-  for (const x of [-7.25, -5.85, -4.43]) box('steel', x, 0, 6.45, x + 0.03, 2.0, 6.88, { c: false });
-  COLL.push([-7.25, 0, 6.45, -4.40, 2.0, 6.88]);
-  for (const [x, y, w] of [[-7.1, 0.48, 0.5], [-6.3, 0.98, 0.4], [-5.5, 0.48, 0.6], [-4.9, 1.48, 0.35], [-6.8, 1.48, 0.45]]) box('books', x, y, 6.5, x + w, y + 0.3, 6.85, { c: false });
+  buildShedGear();
   table(-7.295, 9.0, -6.695, 10.8, 0.9, 0, 'oakFurn', 'steel');
   counter(-4.85, 11.17, -4.275, 11.80, 0, 'w');
   box('chrome', -4.75, 0.85, 11.27, -4.38, 0.902, 11.70, { c: false });
@@ -1525,6 +1526,86 @@ function quadUV(m, A, B, C, D) { // A=vlevo dole, B=vpravo dole, C=vpravo nahoř
   const put = (v, uv) => { G.p.push(v[0], v[1], v[2]); G.n.push(n[0], n[1], n[2]); G.u.push(uv[0], uv[1]); };
   put(A, [0, 1]); put(B, [1, 1]); put(C, [1, 0]); put(A, [0, 1]); put(C, [1, 0]); put(D, [0, 0]);
 }
+// tyč mezi dvěma body (čtvercový průřez w)
+function seg3(m, p, q, w) {
+  const d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], L = Math.hypot(...d); if (L < 1e-4) return;
+  const D = d.map(v => v / L), ref = Math.abs(D[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+  let e1 = [D[1] * ref[2] - D[2] * ref[1], D[2] * ref[0] - D[0] * ref[2], D[0] * ref[1] - D[1] * ref[0]]; const l1 = Math.hypot(...e1); e1 = e1.map(v => v / l1);
+  const e2 = [D[1] * e1[2] - D[2] * e1[1], D[2] * e1[0] - D[0] * e1[2], D[0] * e1[1] - D[1] * e1[0]], h = w / 2;
+  const C = (o, a, b) => [o[0] + (e1[0] * a + e2[0] * b) * h, o[1] + (e1[1] * a + e2[1] * b) * h, o[2] + (e1[2] * a + e2[2] * b) * h];
+  const cs = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+  for (let i = 0; i < 4; i++) { const [a0, b0] = cs[i], [a1, b1] = cs[(i + 1) % 4];
+    const n = [e1[0] * (a0 + a1) + e2[0] * (b0 + b1), e1[1] * (a0 + a1) + e2[1] * (b0 + b1), e1[2] * (a0 + a1) + e2[2] * (b0 + b1)].map(v => v / 2);
+    quad(m, C(p, a0, b0), C(p, a1, b1), C(q, a1, b1), C(q, a0, b0), n); }
+  quad(m, C(p, 1, 1), C(p, 1, -1), C(p, -1, -1), C(p, -1, 1), D.map(v => -v)); quad(m, C(q, 1, 1), C(q, -1, 1), C(q, -1, -1), C(q, 1, -1), D);
+}
+// kolo (bicykl) stojící podél osy x v rovině z; dir +1 = přední kolo na +x; s = měřítko
+function bicycle(x, z, dir, frameMat, s = 1) {
+  const R = 0.34 * s, wb = 1.05 * s, rx = x - dir * wb / 2, fx = x + dir * wb / 2, y = R + 0.005;
+  const P = (u, v, dz = 0) => [x + dir * u * s, v * s, z + dz];
+  for (const cx of [rx, fx]) {
+    const N = 24; for (let i = 0; i < N; i++) { const a0 = i / N * 6.2832, a1 = (i + 1) / N * 6.2832;
+      seg3('tire', [cx + Math.cos(a0) * R, y + Math.sin(a0) * R, z], [cx + Math.cos(a1) * R, y + Math.sin(a1) * R, z], 0.045 * s);
+      seg3('alu', [cx + Math.cos(a0) * (R - 0.03 * s), y + Math.sin(a0) * (R - 0.03 * s), z], [cx + Math.cos(a1) * (R - 0.03 * s), y + Math.sin(a1) * (R - 0.03 * s), z], 0.018 * s); }
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 3.1416; seg3('chrome', [cx + Math.cos(a) * (R - 0.03 * s), y + Math.sin(a) * (R - 0.03 * s), z], [cx - Math.cos(a) * (R - 0.03 * s), y - Math.sin(a) * (R - 0.03 * s), z], 0.004); }
+    cylZ('blackMatte', cx, y, z - 0.03, z + 0.03, 0.025 * s, 10);
+  }
+  const yc = y / s, BB = P(-0.02, yc - 0.02), ST = P(-0.16, yc + 0.5), HT = P(0.42, yc + 0.52), HB = P(0.46, yc + 0.36), RA = [rx, y, z], FA = [fx, y, z];
+  const t = 0.04 * s;
+  seg3(frameMat, BB, ST, t); seg3(frameMat, ST, HT, t); seg3(frameMat, BB, HB, t * 1.15); seg3(frameMat, HB, HT, t * 1.1);
+  seg3(frameMat, BB, [RA[0], RA[1], z + 0.05], t * 0.6); seg3(frameMat, BB, [RA[0], RA[1], z - 0.05], t * 0.6);
+  seg3(frameMat, ST, [RA[0], RA[1], z + 0.05], t * 0.55); seg3(frameMat, ST, [RA[0], RA[1], z - 0.05], t * 0.55);
+  seg3('chrome', HB, [FA[0], FA[1], z + 0.05], t * 0.7); seg3('chrome', HB, [FA[0], FA[1], z - 0.05], t * 0.7);
+  // sedlo, řídítka, pedály
+  const SP = P(-0.2, yc + 0.68); seg3('chrome', ST, SP, 0.025 * s); box('blackMatte', SP[0] - 0.13 * s, SP[1], z - 0.07 * s, SP[0] + 0.12 * s, SP[1] + 0.05 * s, z + 0.07 * s, { c: false });
+  const HS = P(0.40, yc + 0.72); seg3('chrome', HT, HS, 0.025 * s); seg3('blackMatte', [HS[0], HS[1], z - 0.3 * s], [HS[0], HS[1], z + 0.3 * s], 0.025 * s);
+  cylZ('blackMatte', BB[0], BB[1], z - 0.06, z + 0.06, 0.08 * s, 14);
+  seg3('steel', [BB[0], BB[1], z + 0.08], [BB[0] + 0.12 * s, BB[1] - 0.12 * s, z + 0.08], 0.02); seg3('steel', [BB[0], BB[1], z - 0.08], [BB[0] - 0.12 * s, BB[1] + 0.12 * s, z - 0.08], 0.02);
+  box('blackMatte', BB[0] + 0.07 * s, BB[1] - 0.15 * s, z + 0.08, BB[0] + 0.17 * s, BB[1] - 0.12 * s, z + 0.18, { c: false });
+  box('blackMatte', BB[0] - 0.17 * s, BB[1] + 0.09 * s, z - 0.18, BB[0] - 0.07 * s, BB[1] + 0.12 * s, z - 0.08, { c: false });
+  COLL.push([Math.min(rx, fx) - R, 0, z - 0.3 * s, Math.max(rx, fx) + R, 1.0 * s, z + 0.3 * s]);
+}
+// zahradní sklad 1.12: ponk u severní stěny, kola u jižní stěny, lyže na východní stěně
+function buildShedGear() {
+  const X0 = -7.295, X1 = -4.275, ZN = 6.428;
+  // ponk
+  const bx0 = X0 + 0.05, bx1 = X1 - 0.35, bz0 = ZN + 0.02, bz1 = ZN + 0.72;
+  box('walnut', bx0, 0.86, bz0, bx1, 0.92, bz1, { c: false });
+  for (const x of [bx0 + 0.04, bx1 - 0.09]) for (const z of [bz0 + 0.04, bz1 - 0.09]) box('steel', x, 0, z, x + 0.05, 0.86, z + 0.05, { c: false });
+  box('oakFurn', bx0 + 0.04, 0.18, bz0 + 0.04, bx1 - 0.04, 0.21, bz1 - 0.04, { c: false });
+  box('steel', bx0 + 0.04, 0.70, bz0 + 0.04, bx1 - 0.04, 0.85, bz1 - 0.04, { c: false }); // zásuvky
+  for (let i = 0; i < 4; i++) { const x = bx0 + 0.1 + i * (bx1 - bx0 - 0.2) / 4; box('chrome', x + 0.25, 0.76, bz1 - 0.035, x + 0.45, 0.78, bz1 - 0.02, { c: false }); }
+  for (const [x, w, h] of [[bx0 + 0.15, 0.5, 0.3], [bx0 + 0.8, 0.4, 0.25], [bx0 + 1.4, 0.6, 0.35]]) box('kamado', x, 0.21, bz0 + 0.1, x + w, 0.21 + h, bz0 + 0.5, { c: false }); // boxy s nářadím
+  COLL.push([bx0, 0, bz0, bx1, 0.92, bz1]);
+  // svěrák
+  box('kamado', bx1 - 0.35, 0.92, bz1 - 0.2, bx1 - 0.15, 1.02, bz1 - 0.02, { c: false }); box('steel', bx1 - 0.37, 1.02, bz1 - 0.12, bx1 - 0.13, 1.06, bz1 - 0.02, { c: false });
+  seg3('chrome', [bx1 - 0.25, 0.97, bz1 - 0.02], [bx1 - 0.25, 0.97, bz1 + 0.12], 0.015);
+  // děrovaná deska s nářadím + police
+  box('techGray', bx0, 1.05, ZN + 0.005, bx1, 1.85, ZN + 0.02, { c: false });
+  const zt = ZN + 0.03;
+  box('kamado', bx0 + 0.2, 1.35, zt, bx0 + 0.24, 1.65, zt + 0.03, { c: false }); box('steel', bx0 + 0.15, 1.62, zt, bx0 + 0.29, 1.68, zt + 0.04, { c: false }); // kladivo
+  box('steel', bx0 + 0.45, 1.25, zt, bx0 + 0.8, 1.55, zt + 0.005, { c: false }); box('kamado', bx0 + 0.8, 1.3, zt, bx0 + 0.95, 1.45, zt + 0.03, { c: false }); // pila
+  for (let i = 0; i < 6; i++) box('chrome', bx0 + 1.1 + i * 0.07, 1.3 + i * 0.02, zt, bx0 + 1.12 + i * 0.07, 1.6, zt + 0.015, { c: false }); // klíče
+  for (let i = 0; i < 5; i++) { box('blackMatte', bx0 + 1.65 + i * 0.09, 1.45, zt, bx0 + 1.68 + i * 0.09, 1.6, zt + 0.03, { c: false }); box('chrome', bx0 + 1.661 + i * 0.09, 1.3, zt, bx0 + 1.669 + i * 0.09, 1.45, zt + 0.01, { c: false }); } // šroubováky
+  box('kamado', bx0 + 2.2, 1.25, zt, bx0 + 2.45, 1.55, zt + 0.08, { c: false }); // vrtačka
+  box('oakFurn', bx0, 2.05, ZN, bx1, 2.08, ZN + 0.32, { c: false });
+  for (const [x, w, h, m] of [[bx0 + 0.1, 0.4, 0.25, 'books'], [bx0 + 0.7, 0.3, 0.2, 'kamado'], [bx0 + 1.2, 0.5, 0.28, 'techGray'], [bx0 + 1.9, 0.35, 0.22, 'books']]) box(m, x, 2.08, ZN + 0.03, x + w, 2.08 + h, ZN + 0.29, { c: false });
+  ceilLight(-5.8, 7.1, 2.89);
+  // kola u jižní stěny (střídavě natočená kvůli řídítkům)
+  bicycle(-6.3, 13.12, 1, 'bikeRed'); bicycle(-6.3, 12.72, -1, 'bikeBlue'); bicycle(-6.45, 12.34, 1, 'bikeGreen', 0.78);
+  // lyže na východní stěně (5 párů svisle v držáku)
+  const xw = X1 - 0.01, colors = ['skiRed', 'skiBlue', 'skiWhite', 'skiYellow', 'skiBlack'];
+  box('oakFurn', xw - 0.06, 1.25, 7.85, xw, 1.33, 10.65, { c: false });
+  colors.forEach((c, i) => { const zc = 8.15 + i * 0.55, L = 1.7 - (i === 4 ? 0.3 : 0);
+    for (const dz of [-0.045, 0.045]) { const z0 = zc + dz - 0.035, z1 = zc + dz + 0.035, xs = xw - 0.09;
+      box(c, xs, 0.25, z0, xs + 0.016, 0.25 + L - 0.12, z1, { c: false });
+      seg3(c, [xs + 0.008, 0.25 + L - 0.125, zc + dz], [xs - 0.04, 0.25 + L, zc + dz], 0.03);
+      box('blackMatte', xs - 0.03, 0.25 + L * 0.44, z0 + 0.01, xs, 0.25 + L * 0.44 + 0.2, z1 - 0.01, { c: false }); }
+    box('chrome', xw - 0.1, 1.26, zc - 0.11, xw - 0.06, 1.32, zc - 0.09, { c: false }); box('chrome', xw - 0.1, 1.26, zc + 0.09, xw - 0.06, 1.32, zc + 0.11, { c: false });
+  });
+  COLL.push([xw - 0.16, 0, 7.85, X1, 2.0, 10.65]);
+}
+
 function cylZ(m, cx, cy, z0, z1, r, seg = 16) { // válec s osou z (kola)
   for (let i = 0; i < seg; i++) {
     const a0 = i / seg * Math.PI * 2, a1 = (i + 1) / seg * Math.PI * 2;
