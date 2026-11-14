@@ -23,21 +23,32 @@
   #mini { position:fixed; right:12px; bottom:12px; width:118px; height:162px; border-radius:10px; border:1px solid var(--line); cursor:pointer; }
   #hint { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); padding:7px 14px; font-size:12.5px; color:var(--muted); white-space:nowrap; }
   #cross { position:fixed; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.55); pointer-events:none; }
-  #sunPanel { position:fixed; top:60px; left:12px; width:320px; padding:12px 14px; z-index:7; font-size:13.5px; }
-  #sunPanel .qh { display:flex; align-items:center; gap:10px; margin-bottom:10px; } #sunPanel .qh b { flex:1; }
-  #sunPanel .qbtns { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0 8px; } #sunPanel .qbtns .btn { padding:6px 2px; font-size:12.5px; }
-  #sunPanel label { display:block; margin:6px 0; color:var(--muted); } #sunPanel label span { float:right; }
-  #sunPanel input[type=range] { width:100%; accent-color:var(--acc); margin-top:4px; }
-  #sunPanel input[type=date] { margin-left:8px; background:#1b1d22; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit; color-scheme:dark; }
-  #sunPanel .sep { border-top:1px solid var(--line); margin:10px 0 6px; } #sunPanel .chk2 { color:var(--ink); display:flex; gap:8px; align-items:center; flex-wrap:wrap; } #sunPanel .btn.on { border-color:var(--acc); color:var(--acc); }
   #tval { cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; white-space:nowrap; }
-  #qPanel { position:fixed; top:60px; left:12px; width:300px; padding:12px 14px; z-index:6; font-size:13.5px; }
-  #qPanel .qh { display:flex; align-items:center; gap:10px; margin-bottom:10px; } #qPanel .qh b { flex:1; }
-  #qFps { color:var(--muted); font-variant-numeric:tabular-nums; font-size:12px; }
-  #qPanel .qbtns { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; } #qPanel .qbtns .btn { padding:7px 4px; }
-  #qPanel label { display:block; margin:8px 0; color:var(--muted); } #qPanel label span { float:right; color:var(--ink); }
-  #qPanel input[type=range] { width:100%; accent-color:var(--acc); margin-top:4px; }
-  #qPanel .chk { display:flex; gap:8px; align-items:center; color:var(--ink); }
+  #setPanel { position:fixed; top:60px; left:12px; width:350px; max-height:calc(100% - 76px); display:flex; flex-direction:column; z-index:7; font-size:13.5px; overflow:hidden; }
+  #setPanel .sh { display:flex; align-items:center; gap:8px; padding:8px 8px 0 8px; border-bottom:1px solid var(--line); }
+  #setPanel .tabs { display:flex; flex:1; gap:2px; }
+  #setPanel .tb { flex:1; background:none; border:0; border-bottom:2px solid transparent; color:var(--muted); font:inherit; font-size:13.5px; font-weight:600; padding:8px 4px 9px; cursor:pointer; white-space:nowrap; }
+  #setPanel .tb.on { color:var(--acc); border-bottom-color:var(--acc); }
+  #setPanel .x { padding:3px 9px; margin-bottom:6px; }
+  #setPanel .sb { overflow:auto; padding:4px 14px 14px; -webkit-overflow-scrolling:touch; }
+  #setPanel h4 { margin:12px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; display:flex; justify-content:space-between; }
+  #setPanel h4 span { text-transform:none; letter-spacing:0; font-weight:400; }
+  #setPanel .qbtns { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0 8px; } #setPanel .qbtns .btn { padding:7px 2px; font-size:12.5px; }
+  #setPanel label { display:block; margin:8px 0; color:var(--muted); } #setPanel label > span { float:right; color:var(--ink); }
+  #setPanel input[type=range] { width:100%; accent-color:var(--acc); margin:4px 0; }
+  #setPanel input[type=date] { width:100%; background:#1b1d22; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:7px 8px; font:inherit; color-scheme:dark; }
+  #setPanel .chk { display:flex; gap:8px; align-items:center; color:var(--ink); }
+  #setPanel .btn.on { border-color:var(--acc); color:var(--acc); }
+  #qFps { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .tile { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; color:var(--ink); font:inherit; font-weight:650; font-size:14px; padding:12px 10px; text-align:left; cursor:pointer; display:flex; flex-direction:column; gap:2px; }
+  .tile em { font-style:normal; font-size:22px; margin-bottom:4px; } .tile small { color:var(--muted); font-weight:400; font-size:11.5px; }
+  .tile.on { border-color:var(--acc); background:rgba(255,171,61,.14); color:var(--acc); }
+  .sw { display:flex !important; gap:12px; align-items:center; cursor:pointer; color:var(--ink) !important; margin:4px 0 8px !important; }
+  .sw input { display:none; } .sw i { flex:none; width:40px; height:23px; border-radius:12px; background:#3a3e46; position:relative; transition:.2s; }
+  .sw i::after { content:''; position:absolute; left:3px; top:3px; width:17px; height:17px; border-radius:50%; background:#f4f3ef; transition:.2s; }
+  .sw input:checked + i { background:var(--acc); } .sw input:checked + i::after { left:20px; }
+  .sw span b { display:block; font-weight:600; } .sw small { color:var(--muted); font-size:11.5px; }
   .qnote { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.45; }
   #shotBox { position:fixed; inset:0; z-index:15; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.6); padding:16px; }
   #shotBox .shotIn { padding:12px; max-width:min(900px,100%); text-align:center; } #shotImg { max-width:100%; max-height:70vh; border-radius:8px; display:block; margin:0 auto; }
@@ -62,7 +73,8 @@
   #knob { position:absolute; left:30px; top:30px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.45); }
   #loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#101114; z-index:20; font-size:15px; color:var(--muted); }
   #err { position:fixed; inset:0; display:none; padding:30px; background:#101114; z-index:30; }
-  @media (max-width: 640px) { #top { top:8px; left:8px; right:8px; gap:6px; } .btn { padding:6px 9px; font-size:12.5px; } #room { padding:6px 10px; font-size:13px; } #timebox { padding:4px 9px; font-size:12px; } #timebox input { width:84px; } #intro .card { padding:18px; } }
+  @media (max-width: 640px) { #top { top:8px; left:8px; right:8px; gap:6px; } .btn { padding:6px 9px; font-size:12.5px; } #room { padding:6px 10px; font-size:13px; } #timebox { padding:4px 9px; font-size:12px; } #timebox input { width:84px; } #intro .card { padding:18px; } #setPanel { left:8px; right:8px; width:auto; top:52px; max-height:calc(100% - 60px); } .lbl { display:none; } }
+  @media (max-height: 500px) { #setPanel { top:56px; max-height:calc(100% - 64px); } #timebox input { display:none; } }
   .touch-only { display:none; } @media (pointer:coarse) { .touch-only { display:table-row; } .desk-only { display:none; } #help { display:none; } #hint { display:none; } #mini { width:100px; height:138px; } }
 </style>
 </head>
@@ -75,41 +87,53 @@
   <div id="room" class="panel">1.06 · Obývací pokoj</div>
   <button id="bRooms" class="btn">☰ Místnosti</button>
   <div id="timebox" class="panel">☀ <input id="time" type="range" min="0" max="1435" step="5" value="600"><span id="tval" title="Nastavit datum a čas">10:00</span></div>
-  <button id="bLamp" class="btn">💡 Světla</button>
-  <button id="bFly" class="btn" title="Létací režim (F)">🕊 Létání</button>
-  <button id="bGH" class="btn on">🌱 Skleník</button>
-  <button id="bPool" class="btn on">🏊 Bazén</button>
-  <button id="bQ" class="btn">⚙ Kvalita</button>
-  <button id="bShot" class="btn" title="Snímek obrazovky (P)">📷 Snímek</button>
+  <button id="bSet" class="btn" title="Nastavení (N)">⚙ Nastavení</button>
+  <button id="bShot" class="btn" title="Snímek obrazovky (P)">📷<span class="lbl"> Snímek</span></button>
+  <button id="bHelp" class="btn desk-only" title="Ovládání (H)">?</button>
   <button id="bVR" class="btn hide">🥽 VR</button>
 </div>
-<div id="sunPanel" class="panel hide">
-  <div class="qh"><b>Slunce a stíny</b><button id="sunClose" class="btn" style="padding:3px 9px">✕</button></div>
-  <label>Datum <input id="sunDate" type="date"></label>
+<div id="setPanel" class="panel hide">
+  <div class="sh"><div class="tabs"><button class="tb on" data-tab="sunPanel">☀ Slunce</button><button class="tb" data-tab="viewPanel">👁 Zobrazit</button><button class="tb" data-tab="qPanel" id="bQ">⚙ Kvalita</button></div><button id="setClose" class="btn x">✕</button></div>
+  <div class="sb">
+<div id="sunPanel" class="tab">
+  <h4>Datum</h4>
+  <input id="sunDate" type="date">
   <div class="qbtns"><button class="btn" data-day="0.0">Dnes</button><button class="btn" data-day="3.20">20. 3.</button><button class="btn" data-day="6.21">21. 6.</button><button class="btn" data-day="12.21">21. 12.</button></div>
-  <label>Čas <span id="tzInfo"></span><input id="sunTime" type="range" min="0" max="1435" step="5"></label>
+  <h4>Čas <span id="tzInfo"></span></h4>
+  <input id="sunTime" type="range" min="0" max="1435" step="5">
   <div class="qbtns"><button class="btn" data-min="480">8:00</button><button class="btn" data-min="720">12:00</button><button class="btn" data-min="960">16:00</button><button class="btn" data-min="1140">19:00</button></div>
   <button id="sunPlay" class="btn" style="width:100%;margin:4px 0 8px">▶ Přehrát den</button>
   <div id="sunInfo" class="qnote" style="color:var(--ink)"></div>
-  <div class="sep"></div>
-  <label class="chk2"><input id="nwOn" type="checkbox"> Stínící stěny sousedů <span style="float:none;color:var(--muted)">(2 m za hranicí, sever a západ)</span></label>
+  <h4>Stíny od sousedů</h4>
+  <label class="sw"><input id="nwOn" type="checkbox"><i></i><span><b>Domy sousedů</b><small>stěna 2 m za hranicí, sever a západ</small></span></label>
   <div class="qbtns" style="grid-template-columns:repeat(2,1fr)"><button class="btn" data-nwh="3.5">1 podlaží · 3,5 m</button><button class="btn" data-nwh="6.5">2 podlaží · 6,5 m</button></div>
   <label>Výška stěny <span id="nwHV"></span><input id="nwH" type="range" min="2" max="12" step="0.5"></label>
   <div class="qnote">Skutečná poloha slunce pro Příchovice u Přeštic, dům natočený podle koordinační situace. Čas je místní (SEČ/SELČ). Nebere v úvahu okolní stavby a stromy mimo pozemek.</div>
 </div>
-<div id="qPanel" class="panel hide">
-  <div class="qh"><b>Kvalita zobrazení</b><span id="qFps"></span><button id="qClose" class="btn" style="padding:3px 9px">✕</button></div>
+<div id="viewPanel" class="tab hide">
+  <div class="tiles">
+    <button id="bLamp" class="tile"><em>💡</em>Světla<small>rozsvítit svítidla</small></button>
+    <button id="bFly" class="tile"><em>🕊</em>Létání<small>volný let (F)</small></button>
+    <button id="bGH" class="tile on"><em>🌱</em>Skleník<small>zobrazit</small></button>
+    <button id="bPool" class="tile on"><em>🏊</em>Bazén<small>zobrazit</small></button>
+  </div>
+  <div class="qnote">Zapnuté položky jsou zvýrazněné oranžově. Všechna nastavení si prohlížeč pamatuje.</div>
+</div>
+<div id="qPanel" class="tab hide">
+  <h4>Předvolba <span id="qFps"></span></h4>
   <div class="qbtns"><button class="btn" data-q="low">Nízká</button><button class="btn" data-q="mid">Střední</button><button class="btn" data-q="high">Vysoká</button><button class="btn" data-q="ultra">Ultra</button></div>
   <label>Rozlišení <span id="qResV"></span><input id="qRes" type="range" min="0.5" max="2" step="0.1"></label>
   <label>Ostrost stínů <span id="qShV"></span><input id="qSh" type="range" min="10" max="13" step="1"></label>
   <label class="chk"><input id="qAO" type="checkbox"> Stínování v rozích (ambient occlusion)</label>
   <div class="qnote">Když se obraz trhá, snižte kvalitu. Pro ostré snímky dejte Ultra. Nastavení se pamatuje.</div>
 </div>
+  </div>
+</div>
 <div id="shotBox" class="hide"><div class="panel shotIn"><img id="shotImg" alt="Snímek"><div class="qnote">Snímek se stáhl. Pokud ne: pravé tlačítko / dlouhý stisk na obrázku → Uložit.</div><button id="shotClose" class="btn">Zavřít</button></div></div>
 <div id="menu" class="panel hide"><button id="menuClose" class="btn" style="width:auto;padding:4px 10px">✕</button><div id="menuList"></div></div>
 <canvas id="mini" width="118" height="162"></canvas>
 <div id="hint" class="panel">Klikněte do obrazu pro ovládání myší · Esc uvolní kurzor</div>
-<div id="help" class="panel desk-only"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>F</b> létání (mezerník / E nahoru, Q / C dolů) · <b>M</b> místnosti · <b>L</b> světla · <b>R</b> otevřít / zavřít (lednice, trouba, bazén) · <b>P</b> snímek · <b>G</b> skleník · <b>B</b> bazén · <b>H</b> skrýt nápovědu<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
+<div id="help" class="panel desk-only hide"><b>W A S D</b> chůze · <b>Shift</b> rychleji · <b>myš</b> rozhlížení<br><b>F</b> létání (mezerník / E nahoru, Q / C dolů) · <b>M</b> místnosti · <b>N</b> nastavení · <b>L</b> světla · <b>R</b> otevřít / zavřít (lednice, trouba, bazén) · <b>P</b> snímek · <b>G</b> skleník · <b>B</b> bazén · <b>H</b> nápověda<br>Dveře se otevírají samy, po schodech se dá chodit. Klik na mapku = přesun.</div>
 <div id="joy"><div id="knob"></div></div>
 <div id="flyCtl" class="hide"><button id="flyUp" class="btn">▲</button><button id="flyDown" class="btn">▼</button></div>
 <div id="intro">
@@ -122,9 +146,8 @@
       <tr class="touch-only"><td>Levý palec</td><td>chůze (virtuální joystick)</td></tr>
       <tr class="touch-only"><td>Pravý palec</td><td>rozhlížení</td></tr>
       <tr><td>☰ Místnosti</td><td>skok do kterékoli místnosti nebo ven</td></tr>
-      <tr><td>☀ Slunce</td><td>skutečná poloha slunce podle data a času – klikněte na datum v liště</td></tr>
-      <tr><td>🕊 Létání</td><td>volný let kolem domu (F, mezerník nahoru, Q dolů)</td></tr>
-      <tr><td>💡 Světla</td><td>rozsvícení svítidel (večer)</td></tr>
+      <tr><td>⚙ Nastavení</td><td>slunce a stíny podle data, létání, světla, skleník, bazén, kvalita</td></tr>
+      <tr><td>☀ Datum</td><td>klik na datum v liště otevře slunce a stíny</td></tr>
     </table>
     <button id="start">Vstoupit do domu</button>
     <button id="startVR" class="hide" style="margin-top:10px;width:100%;padding:11px 20px;border-radius:10px;border:1px solid var(--acc);background:none;color:var(--acc);font-weight:700;font-size:15px;cursor:pointer">🥽 Vstoupit ve VR brýlích</button>
@@ -2299,7 +2322,7 @@ class Renderer {
     for (const b of o.g.bs) b.hidden = !on; for (const c of o.g.coll) c.off = !on;
     if (o.off) { for (const b of o.off.bs) b.hidden = on; for (const c of o.off.coll) c.off = on; }
     if (o.extra) { for (const b of o.extra) b.hidden = !on; for (const c of o.extraColl) c.off = !on; }
-    const e = document.getElementById(o.btn); if (e) { e.classList.toggle('on', on); e.textContent = o.label + (on ? '' : ' (skrytý)'); }
+    const e = document.getElementById(o.btn); if (e) { e.classList.toggle('on', on); const sm = e.querySelector('small'); if (sm) sm.textContent = on ? 'zobrazený' : 'skrytý'; }
     if (typeof S !== 'undefined') S.shadowDirty = true;
     try { localStorage.setItem(o.key, on ? '1' : '0'); } catch (_) { }
   }
@@ -2585,7 +2608,7 @@ class Renderer {
   let FLY = false;
   function toggleFly() {
     FLY = !FLY; P.vy = 0;
-    const b = document.getElementById('bFly'); if (b) { b.classList.toggle('on', FLY); b.textContent = FLY ? '🕊 Létání: zap' : '🕊 Létání'; }
+    const b = document.getElementById('bFly'); if (b) { b.classList.toggle('on', FLY); const sm = b.querySelector('small'); if (sm) sm.textContent = FLY ? 'zapnuto (F)' : 'volný let (F)'; }
     const fc = document.getElementById('flyCtl'); if (fc) fc.classList.toggle('hide', !(FLY && matchMedia('(pointer:coarse)').matches));
     if (!FLY && typeof VRM !== 'undefined') VRM.dirty = true;
   }
@@ -2639,8 +2662,8 @@ class Renderer {
   function moveKnob() { $('knob').style.transform = `translate(${joy.dx * 30}px,${joy.dy * 30}px)`; }
 
   // --- UI ---
-  function toggleLamps() { S.lampsOn = !S.lampsOn; $('bLamp').classList.toggle('on', S.lampsOn); }
-  function toggleMenu() { $('menu').classList.toggle('hide'); }
+  function toggleLamps() { S.lampsOn = !S.lampsOn; $('bLamp').classList.toggle('on', S.lampsOn); $('bLamp').querySelector('small').textContent = S.lampsOn ? 'rozsvíceno' : 'rozsvítit svítidla'; }
+  function toggleMenu() { $('menu').classList.toggle('hide'); $('setPanel').classList.add('hide'); }
   $('bLamp').onclick = toggleLamps;
   $('bFly').onclick = toggleFly;
   for (const [id, k] of [['flyUp', 'up'], ['flyDown', 'down']]) { const el = $(id); const on = e => { flyHold[k] = true; e.preventDefault(); }, off = () => { flyHold[k] = false; };
@@ -2655,8 +2678,23 @@ class Renderer {
   $('time').oninput = e => { SUN.min = +e.target.value; syncSunUI(); };
   $('sunTime').oninput = e => { SUN.min = +e.target.value; syncSunUI(); };
   $('sunDate').onchange = e => { const v = e.target.value.split('-').map(Number); if (v.length === 3 && v[0]) { SUN.y = v[0]; SUN.mo = v[1] - 1; SUN.d = v[2]; syncSunUI(); } };
-  $('tval').onclick = () => $('sunPanel').classList.toggle('hide');
-  $('sunClose').onclick = () => $('sunPanel').classList.add('hide');
+  let setTab = 'sunPanel';
+  function openSet(tab, toggle) {
+    const P0 = $('setPanel'), was = !P0.classList.contains('hide');
+    if (toggle && was && (!tab || tab === setTab)) { P0.classList.add('hide'); return; }
+    if (tab) setTab = tab;
+    document.querySelectorAll('#setPanel .tab').forEach(t => t.classList.toggle('hide', t.id !== setTab));
+    document.querySelectorAll('#setPanel .tb').forEach(t => t.classList.toggle('on', t.dataset.tab === setTab));
+    const tb = $('top').getBoundingClientRect().bottom + 8; P0.style.top = tb + 'px'; P0.style.maxHeight = `calc(100% - ${tb + 12}px)`;
+    P0.classList.remove('hide'); $('menu').classList.add('hide');
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+  $('tval').onclick = () => openSet('sunPanel', true);
+  $('bSet').onclick = () => openSet(null, true);
+  $('bHelp').onclick = () => $('help').classList.toggle('hide');
+  $('setClose').onclick = () => $('setPanel').classList.add('hide');
+  document.querySelectorAll('#setPanel .tb').forEach(t => t.onclick = () => openSet(t.dataset.tab));
+  addEventListener('keydown', e => { if (e.code === 'KeyN' && !e.repeat && e.target.tagName !== 'INPUT') openSet(null, true); });
   document.querySelectorAll('#sunPanel [data-day]').forEach(b => b.onclick = () => {
     const [mo, d] = b.dataset.day.split('.').map(Number);
     if (mo === 0) { const t = new Date(); SUN.mo = t.getMonth(); SUN.d = t.getDate(); SUN.y = t.getFullYear(); } else { SUN.mo = mo - 1; SUN.d = d; }
@@ -2693,7 +2731,7 @@ class Renderer {
   const QS = { ...QL[qKey] };
   function applyQ(save) {
     R.aoAmt = QS.ao; R.shadowSoft = QS.soft; R.setShadowSize(QS.shadow); S.shadowDirty = true;
-    $('bQ').textContent = '⚙ ' + (QL[qKey] ? QL[qKey].name : 'Vlastní');
+    $('bQ').textContent = '⚙ Kvalita';
     document.querySelectorAll('#qPanel [data-q]').forEach(b => b.classList.toggle('on', b.dataset.q === qKey));
     $('qRes').value = QS.res; $('qResV').textContent = Math.round(QS.res * 100) + ' %';
     $('qSh').value = Math.log2(QS.shadow); $('qShV').textContent = QS.shadow + ' px';
@@ -2705,8 +2743,6 @@ class Renderer {
   $('qRes').oninput = e => { QS.res = +e.target.value; qKey = 'custom'; applyQ(); };
   $('qSh').oninput = e => { QS.shadow = 1 << +e.target.value; qKey = 'custom'; applyQ(); };
   $('qAO').onchange = e => { QS.ao = e.target.checked ? 0.8 : 0; qKey = 'custom'; applyQ(); };
-  $('bQ').onclick = () => $('qPanel').classList.toggle('hide');
-  $('qClose').onclick = () => $('qPanel').classList.add('hide');
   // FPS měřič
   let fpsN = 0, fpsT = performance.now();
   function tickFps(now) { fpsN++; if (now - fpsT > 1000) { $('qFps').textContent = Math.round(fpsN * 1000 / (now - fpsT)) + ' FPS'; fpsN = 0; fpsT = now; } }
