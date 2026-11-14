@@ -1738,7 +1738,7 @@ function buildFish(type) {
 // ---------- HYPOTETICKÉ STĚNY SOUSEDŮ (2 m za hranicí, sever a západ – ne na straně ulic) ----------
 function buildNeighborWalls(h) {
   const off = 2.0, A = [27.35, -2.3], B = [-9.6, -2.85], C = [-10.2, 22.6];
-  const offLine = (p, q) => { const L = Math.hypot(q[0] - p[0], q[1] - p[1]), dx = (q[0] - p[0]) / L, dz = (q[1] - p[1]) / L, o = [-dz * off, dx * off]; return [[p[0] - o[0], p[1] - o[1]], [q[0] - o[0], q[1] - o[1]], dx, dz]; };
+  const offLine = (p, q) => { const L = Math.hypot(q[0] - p[0], q[1] - p[1]), dx = (q[0] - p[0]) / L, dz = (q[1] - p[1]) / L, o = [-dz * off, dx * off]; return [[p[0] + o[0], p[1] + o[1]], [q[0] + o[0], q[1] + o[1]], dx, dz]; };
   const [n0, n1, ndx, ndz] = offLine(A, B), [w0, w1, wdx, wdz] = offLine(B, C);
   // průsečík odsazených čar v SZ rohu
   const den = ndx * wdz - ndz * wdx, t = ((w0[0] - n0[0]) * wdz - (w0[1] - n0[1]) * wdx) / den, K = [n0[0] + ndx * t, n0[1] + ndz * t];
@@ -2674,7 +2674,7 @@ class Renderer {
     if (NW.on) { for (const k in GEO) delete GEO[k]; buildNeighborWalls(NW.h); for (const k in GEO) { const b = R.addBatch(k, GEO[k]); NW.parts.push(b); R.dyn.push(b); } for (const k in GEO) delete GEO[k]; }
     $('nwOn').checked = NW.on; $('nwH').value = NW.h; $('nwHV').textContent = NW.h.toFixed(1).replace('.', ',') + ' m';
     document.querySelectorAll('#sunPanel [data-nwh]').forEach(b => b.classList.toggle('on', NW.on && Math.abs(+b.dataset.nwh - NW.h) < 0.05));
-    S.shadowDirty = true; try { localStorage.setItem('dum_nw', JSON.stringify({ on: NW.on, h: NW.h })); } catch (_) { }
+    try { VRM.dirty = true; } catch (_) { } S.shadowDirty = true; try { localStorage.setItem('dum_nw', JSON.stringify({ on: NW.on, h: NW.h })); } catch (_) { }
   }
   $('nwOn').onchange = e => { NW.on = e.target.checked; rebuildNW(); };
   $('nwH').oninput = e => { NW.h = +e.target.value; if (!NW.on) NW.on = true; rebuildNW(); };
@@ -2799,10 +2799,10 @@ class Renderer {
   }
   // ---------- VR MENU (plovoucí panel s nastavením) ----------
   const VRM = { open: false, dirty: true, hover: -1, trigLatch: false, btnLatch: false, wantOpen: false, w: 1.0, h: 0.66, C: [0, 0, 0], ang: 0, buttons: [] };
-  const vrc = document.createElement('canvas'); vrc.width = 1024; vrc.height = 676; const vx = vrc.getContext('2d');
+  const vrc = document.createElement('canvas'); vrc.width = 1024; vrc.height = 780; const vx = vrc.getContext('2d');
   R.tex('vrPanel', vrc);
   for (const k in GEO) delete GEO[k];
-  quadUV('vrPanel', [-0.5, -0.33, 0], [0.5, -0.33, 0], [0.5, 0.33, 0], [-0.5, 0.33, 0]);
+  quadUV('vrPanel', [-0.5, -0.381, 0], [0.5, -0.381, 0], [0.5, 0.381, 0], [-0.5, 0.381, 0]);
   const vrPanelB = R.addBatch('vrPanel', GEO.vrPanel); vrPanelB.cast = false; vrPanelB.hidden = true; R.dyn.push(vrPanelB);
   for (const k in GEO) delete GEO[k];
   box('laser', -0.002, -0.002, -1, 0.002, 0.002, 0, { c: false });
@@ -2831,6 +2831,12 @@ class Renderer {
     const ql = [['low', 'Nízká'], ['mid', 'Střední'], ['high', 'Vysoká']];
     ql.forEach(([k, n], i) => add(200 + i * 200, 520, 190, 64, n, () => { qKey = k; Object.assign(QS, QL[k]); applyQ(true); if (xrSession) try { xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, R.gl, { framebufferScaleFactor: QS.xr, antialias: true }) }); } catch (_) { } }, qKey === k));
     add(820, 520, 174, 64, '✕ Zavřít', () => closeVRMenu());
+    const nwSet = (on, h) => { NW.on = on; if (h != null) NW.h = Math.min(12, Math.max(2, h)); rebuildNW(); };
+    add(200, 620, 120, 64, 'Vyp', () => nwSet(false), !NW.on);
+    add(330, 620, 170, 64, '1 podl.', () => nwSet(true, 3.5), NW.on && Math.abs(NW.h - 3.5) < 0.05);
+    add(510, 620, 170, 64, '2 podl.', () => nwSet(true, 6.5), NW.on && Math.abs(NW.h - 6.5) < 0.05);
+    add(690, 620, 100, 64, '− 0,5', () => nwSet(true, NW.h - 0.5));
+    add(800, 620, 100, 64, '+ 0,5', () => nwSet(true, NW.h + 0.5));
     return B;
   }
   function drawVRMenu() {
@@ -2846,8 +2852,8 @@ class Renderer {
     const { az, el } = sunPos(utcMs(SUN.min)), st = sunTimes();
     vx.font = '26px system-ui, sans-serif'; vx.fillStyle = '#b9bcc2';
     vx.fillText(`Slunce: azimut ${Math.round(az)}°, výška ${el.toFixed(0)}°  ·  východ ${fmtM(st.rise)}  ·  západ ${fmtM(st.set)}`, 30, 396);
-    vx.fillText('Kvalita', 30, 552); vx.fillText('Datum', 30, 82); vx.fillText('Čas', 30, 206);
-    vx.font = '22px system-ui, sans-serif'; vx.fillText('Spoušť = klik · přesun: chyťte horní lištu spouští nebo panel tlačítkem Grip (páčka = blíž/dál) · B/Y = zavřít', 30, 640);
+    vx.fillText('Kvalita', 30, 552); vx.fillText('Sousedé', 30, 640); vx.fillStyle = NW.on ? '#ffab3d' : '#6b6f78'; vx.fillText(NW.on ? NW.h.toFixed(1).replace('.', ',') + ' m' : 'vyp', 912, 652); vx.fillStyle = '#b9bcc2'; vx.fillText('Datum', 30, 82); vx.fillText('Čas', 30, 206);
+    vx.font = '22px system-ui, sans-serif'; vx.fillText('Spoušť = klik · přesun: horní lišta spouští nebo Grip (páčka = blíž/dál) · B/Y = zavřít', 30, 740);
     VRM.buttons.forEach((b, i) => {
       if (b.slider) {
         const u = SUN.min / 1435;
@@ -2891,8 +2897,8 @@ class Renderer {
         if (tt > 0 && tt < 6) {
           const hp = [o[0] + d[0] * tt - VRM.C[0], o[1] + d[1] * tt - VRM.C[1], o[2] + d[2] * tt - VRM.C[2]];
           lx = hp[0] * Rt[0] + hp[2] * Rt[2]; ly = hp[1];
-          if (Math.abs(lx) <= 0.5 && Math.abs(ly) <= 0.33) {
-            onPanel = true; dist = tt; u = (lx + 0.5) * vrc.width; v = (0.33 - ly) / 0.66 * vrc.height;
+          if (Math.abs(lx) <= 0.5 && Math.abs(ly) <= 0.381) {
+            onPanel = true; dist = tt; u = (lx + 0.5) * vrc.width; v = (0.381 - ly) / 0.762 * vrc.height;
             hover = VRM.buttons.findIndex(b => u >= b.x && u <= b.x + b.w && v >= b.y && v <= b.y + b.h);
           }
         }
@@ -3028,7 +3034,7 @@ class Renderer {
     requestAnimationFrame(frame);
   }
   teleport(9.2, 4.6, 300, 0);
-  window.__walk = { uwEnter, uwExit, UW, acts: ACTS, actsStep: (d) => stepActs(d, P.x, P.z, Math.sin(P.yaw), -Math.cos(P.yaw)), __vrm: () => [VRM.C.map(v => +v.toFixed(2)), +VRM.ang.toFixed(2), !!VRM.drag], toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
+  window.__walk = { vrmPng: () => { drawVRMenu(); return vrc.toDataURL(); }, uwEnter, uwExit, UW, acts: ACTS, actsStep: (d) => stepActs(d, P.x, P.z, Math.sin(P.yaw), -Math.cos(P.yaw)), __vrm: () => [VRM.C.map(v => +v.toFixed(2)), +VRM.ang.toFixed(2), !!VRM.drag], toggleFly, _xr: (f, ref) => { xrRef = ref; xrFloor = true; xrFrame(performance.now(), f); }, keys, P, S, R, teleport, setTime, doors, render: () => { R.render(S); }, look: (yaw, pitch) => { P.yaw = yaw * Math.PI / 180; P.pitch = pitch * Math.PI / 180; } };
   requestAnimationFrame(frame);
   setupVR();
   $('loading').classList.add('hide');
