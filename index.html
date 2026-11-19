@@ -2916,10 +2916,10 @@ class Renderer {
   }
   // ---------- VR MENU (plovoucí panel s nastavením) ----------
   const VRM = { open: false, dirty: true, hover: -1, trigLatch: false, btnLatch: false, wantOpen: false, w: 1.0, h: 0.66, C: [0, 0, 0], ang: 0, buttons: [] };
-  const vrc = document.createElement('canvas'); vrc.width = 1024; vrc.height = 780; const vx = vrc.getContext('2d');
+  const vrc = document.createElement('canvas'); vrc.width = 1024; vrc.height = 860; const vx = vrc.getContext('2d');
   R.tex('vrPanel', vrc);
   for (const k in GEO) delete GEO[k];
-  quadUV('vrPanel', [-0.5, -0.381, 0], [0.5, -0.381, 0], [0.5, 0.381, 0], [-0.5, 0.381, 0]);
+  quadUV('vrPanel', [-0.5, -0.42, 0], [0.5, -0.42, 0], [0.5, 0.42, 0], [-0.5, 0.42, 0]);
   const vrPanelB = R.addBatch('vrPanel', GEO.vrPanel); vrPanelB.cast = false; vrPanelB.hidden = true; R.dyn.push(vrPanelB);
   for (const k in GEO) delete GEO[k];
   box('laser', -0.002, -0.002, -1, 0.002, 0.002, 0, { c: false });
@@ -2954,6 +2954,9 @@ class Renderer {
     add(510, 620, 170, 64, '2 podl.', () => nwSet(true, 6.5), NW.on && Math.abs(NW.h - 6.5) < 0.05);
     add(690, 620, 100, 64, '− 0,5', () => nwSet(true, NW.h - 0.5));
     add(800, 620, 100, 64, '+ 0,5', () => nwSet(true, NW.h + 0.5));
+    const setTurn = sm => { VRT.smooth = sm; try { localStorage.setItem('dum_vrturn', sm ? 'smooth' : 'snap'); } catch (_) { } };
+    add(200, 720, 260, 64, '↻ Plynulé', () => setTurn(true), VRT.smooth);
+    add(470, 720, 260, 64, '↻ Po 30°', () => setTurn(false), !VRT.smooth);
     return B;
   }
   function drawVRMenu() {
@@ -2969,8 +2972,8 @@ class Renderer {
     const { az, el } = sunPos(utcMs(SUN.min)), st = sunTimes();
     vx.font = '26px system-ui, sans-serif'; vx.fillStyle = '#b9bcc2';
     vx.fillText(`Slunce: azimut ${Math.round(az)}°, výška ${el.toFixed(0)}°  ·  východ ${fmtM(st.rise)}  ·  západ ${fmtM(st.set)}`, 30, 396);
-    vx.fillText('Kvalita', 30, 552); vx.fillText('Sousedé', 30, 640); vx.fillStyle = NW.on ? '#ffab3d' : '#6b6f78'; vx.fillText(NW.on ? NW.h.toFixed(1).replace('.', ',') + ' m' : 'vyp', 912, 652); vx.fillStyle = '#b9bcc2'; vx.fillText('Datum', 30, 82); vx.fillText('Čas', 30, 206);
-    vx.font = '22px system-ui, sans-serif'; vx.fillText('Spoušť = klik · přesun: horní lišta spouští nebo Grip (páčka = blíž/dál) · B/Y = zavřít', 30, 740);
+    vx.fillText('Kvalita', 30, 552); vx.fillText('Sousedé', 30, 640); vx.fillText('Otáčení', 30, 740); vx.fillStyle = NW.on ? '#ffab3d' : '#6b6f78'; vx.fillText(NW.on ? NW.h.toFixed(1).replace('.', ',') + ' m' : 'vyp', 912, 652); vx.fillStyle = '#b9bcc2'; vx.fillText('Datum', 30, 82); vx.fillText('Čas', 30, 206);
+    vx.font = '22px system-ui, sans-serif'; vx.fillText('Spoušť = klik · přesun: horní lišta spouští nebo Grip (páčka = blíž/dál) · B/Y = zavřít', 30, 830);
     VRM.buttons.forEach((b, i) => {
       if (b.slider) {
         const u = SUN.min / 1435;
@@ -3014,8 +3017,8 @@ class Renderer {
         if (tt > 0 && tt < 6) {
           const hp = [o[0] + d[0] * tt - VRM.C[0], o[1] + d[1] * tt - VRM.C[1], o[2] + d[2] * tt - VRM.C[2]];
           lx = hp[0] * Rt[0] + hp[2] * Rt[2]; ly = hp[1];
-          if (Math.abs(lx) <= 0.5 && Math.abs(ly) <= 0.381) {
-            onPanel = true; dist = tt; u = (lx + 0.5) * vrc.width; v = (0.381 - ly) / 0.762 * vrc.height;
+          if (Math.abs(lx) <= 0.5 && Math.abs(ly) <= 0.42) {
+            onPanel = true; dist = tt; u = (lx + 0.5) * vrc.width; v = (0.42 - ly) / 0.84 * vrc.height;
             hover = VRM.buttons.findIndex(b => u >= b.x && u <= b.x + b.w && v >= b.y && v <= b.y + b.h);
           }
         }
@@ -3044,13 +3047,14 @@ class Renderer {
     VRM.trigLatch = trig; VRM.gripLatch = grip;
     if (VRM.dirty && VRM.open) drawVRMenu();
   }
+  const VRT = { smooth: (() => { try { return localStorage.getItem('dum_vrturn') !== 'snap'; } catch (_) { return true; } })() };
   function xrFrame(t, xf) {
     const sess = xf.session; sess.requestAnimationFrame(xrFrame);
     const pose = xf.getViewerPose(xrRef); if (!pose) return;
     const dt = Math.min(0.05, (t - xrLast) / 1000 || 0.016); xrLast = t;
     const yOff = xrFloor ? 0 : EYE;
     const player = () => M4.model(P.x, P.feet + yOff, P.z, -P.yaw);
-    // ovladače: levá páčka chůze, pravá páčka otáčení po 30°, A/X = další místnost, B/Y = menu, spoušť = klik v menu
+    // ovladače: levá páčka chůze, pravá páčka otáčení (plynulé / po 30°), A/X = další místnost, B/Y = menu, spoušť = klik v menu
     let mx = 0, my = 0, turn = 0, rightY = 0, btn = false, menuBtn = false, trig = false, grip = false, raySrc = null;
     for (const src of sess.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
@@ -3063,8 +3067,12 @@ class Renderer {
     if (menuBtn && !VRM.btnLatch) VRM.open ? closeVRMenu() : (VRM.wantOpen = true);
     VRM.btnLatch = menuBtn;
     if (VRM.drag) { turn = 0; }
-    if (Math.abs(turn) > 0.7 && !xrTurnLatch) { P.yaw += Math.sign(turn) * Math.PI / 6; xrTurnLatch = true; }
-    if (Math.abs(turn) < 0.3) xrTurnLatch = false;
+    {  // otáčení kolem hlavy (plynulé nebo po 30°)
+      let dy = 0;
+      if (VRT.smooth) { if (Math.abs(turn) > 0.15) dy = Math.sign(turn) * (Math.abs(turn) - 0.15) / 0.85 * 1.9 * dt; }
+      else { if (Math.abs(turn) > 0.7 && !xrTurnLatch) { dy = Math.sign(turn) * Math.PI / 6; xrTurnLatch = true; } if (Math.abs(turn) < 0.3) xrTurnLatch = false; }
+      if (dy) { const h0 = M4.mul(player(), pose.transform.matrix); P.yaw += dy; const h1 = M4.mul(player(), pose.transform.matrix); P.x += h0[12] - h1[12]; P.z += h0[14] - h1[14]; }
+    }
     if (btn && !xrBtnLatch) { xrRoomIdx = (xrRoomIdx + 1) % xrRooms.length; const r = xrRooms[xrRoomIdx]; teleport(r[0], r[1], r[2], r[3]); }
     xrBtnLatch = btn;
     let W = M4.mul(player(), pose.transform.matrix);
